@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{{ title }}</title>
+    <link rel="stylesheet" href="{{ url_for('static', path='/style.css') }}" />
+  </head>
+  <body>
+    <main class="container">
+      <header class="page-header">
+        <p class="eyebrow">IT-инфраструктура</p>
+        <h1>Certificate Radar</h1>
+        <p class="subtitle">
+          Проверяем сертификаты сервисов до того, как они станут причиной сбоя.
+        </p>
+      </header>
+
+      <section class="panel intro-panel">
+        <h2>Проверить сервис</h2>
+        <p>
+          Введите один или несколько адресов — по одному в строке. Можно указать
+          URL, адрес с портом или CIDR-сеть. По умолчанию используется порт 443.
+        </p>
+        <form action="/check" method="post" class="check-form">
+          <label for="target">Адреса сервисов</label>
+          <div class="form-row">
+            <textarea id="target" name="target" placeholder="example.com&#10;python.org&#10;192.168.1.0/30" required>{{ targets }}</textarea>
+            <button class="button" type="submit">Проверить</button>
+          </div>
+        </form>
+      </section>
+
+      {% if error %}
+      <section class="panel result-panel error-panel" role="alert">
+        <h2>Не удалось выполнить проверку</h2>
+        <p>{{ error }}</p>
+      </section>
+      {% endif %}
+
+      {% if results %}
+      <section class="panel result-panel">
+        <p class="eyebrow">Результаты проверки</p>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Сервис</th><th>Статус</th><th>CN</th><th>Issuer</th><th>Истекает</th><th>Дней</th></tr>
+            </thead>
+            <tbody>
+              {% for result in results %}
+              <tr>
+                <td>{{ result.target }}</td>
+                <td><span class="badge badge-{{ result.status | lower }}">{{ result.status }}</span></td>
+                <td>{{ result.subject_cn or "—" }}</td>
+                <td>{{ result.issuer or "—" }}</td>
+                <td>{{ result.not_valid_after.strftime('%d.%m.%Y %H:%M UTC') if result.not_valid_after else "—" }}</td>
+                <td>{{ result.days_left if result.days_left is not none else "—" }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% for result in results if result.error %}
+        <p class="explanation error-text"><strong>{{ result.target }}:</strong> {{ result.error }}</p>
+        {% endfor %}
+      </section>
+      {% endif %}
+
+      <section class="stats" aria-label="Состояние проекта">
+        <article class="stat-card">
+          <span class="stat-label">Сервисов проверено</span>
+          <strong>{{ results | length }}</strong>
+        </article>
+        <article class="stat-card">
+          <span class="stat-label">Проблем найдено</span>
+          <strong>{{ results | selectattr('status', 'ne', 'OK') | list | length }}</strong>
+        </article>
+        <article class="stat-card">
+          <span class="stat-label">Статус</span>
+          <strong class="status">{{ "Проверка выполнена" if results or error else "Готово к проверке" }}</strong>
+        </article>
+      </section>
+    </main>
+  </body>
+</html>
