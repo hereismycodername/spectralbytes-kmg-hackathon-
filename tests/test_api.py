@@ -97,3 +97,46 @@ async def test_certificate_history(client, mock_scan):
     assert len(points) == 1
     assert points[0]["risk_score"] == 10
     assert points[0]["days_left"] == 90
+
+
+@pytest.mark.asyncio
+async def test_telegram_endpoint(client, monkeypatch):
+    async def fake_send_alert(_cert_data, _trigger_reason):
+        return True
+
+    monkeypatch.setattr(main_module, "send_alert", fake_send_alert)
+    response = await client.post("/api/test-telegram")
+    assert response.status_code == 200
+    assert response.json()["sent"] is True
+
+
+@pytest.mark.asyncio
+async def test_manual_critical_scan_sends_telegram_alert(client, monkeypatch):
+    async def critical_scan(_targets):
+        return [
+            TargetResult(
+                target="critical.example.com",
+                host="critical.example.com",
+                port=443,
+                status="Critical",
+                subject_cn="critical.example.com",
+                days_left=5,
+                risk_score=85,
+                risk_level="Critical",
+            )
+        ]
+
+    calls = []
+
+    async def fake_send_alert(cert_data, trigger_reason):
+        calls.append((cert_data, trigger_reason))
+        return True
+
+    monkeypatch.setattr(main_module, "scan_targets", critical_scan)
+    monkeypatch.setattr(main_module, "send_alert", fake_send_alert)
+    response = await client.post(
+        "/api/scan", json={"targets": ["critical.example.com"]}
+    )
+    assert response.status_code == 200
+    assert len(calls) == 1
+    assert calls[0][0]["host"] == "critical.example.com"

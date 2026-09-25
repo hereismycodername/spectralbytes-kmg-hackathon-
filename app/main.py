@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import csv
 import io
 from contextlib import asynccontextmanager
@@ -21,6 +22,7 @@ from app.database import (
     init_db,
     upsert_certificate,
 )
+from app.notifier import alert_trigger, send_alert
 from app.scheduler import CertificateScheduler, scan_lock
 
 
@@ -42,7 +44,7 @@ async def lifespan(application: FastAPI):
 app = FastAPI(
     title="Certificate Radar",
     description="Мониторинг TLS/SSL-сертификатов корпоративной инфраструктуры.",
-    version="0.4.0",
+    version="0.5.0",
     lifespan=lifespan,
 )
 
@@ -105,6 +107,26 @@ async def save_results(
     return certificates
 
 
+async def send_risk_alerts(certificates: list[Certificate]) -> None:
+    alerts = []
+    for certificate in certificates:
+        cert_data = {
+            "host": certificate.host,
+            "port": certificate.port,
+            "status": certificate.status,
+            "risk_score": certificate.risk_score,
+            "risk_level": certificate.risk_level,
+            "days_left": certificate.days_left,
+            "risk_reasons": certificate.risk_reasons,
+            "recommendations": certificate.recommendations,
+        }
+        trigger = alert_trigger(cert_data)
+        if trigger:
+            alerts.append(send_alert(cert_data, trigger))
+    if alerts:
+        await asyncio.gather(*alerts)
+
+
 @app.get("/", name="dashboard")
 async def dashboard(request: Request):
     return templates.TemplateResponse(
@@ -122,7 +144,9 @@ async def api_scan(
     try:
         async with scan_lock:
             results = await scan_targets(payload.targets)
-            return await save_results(session, results)
+            certificates = await save_results(session, results)
+        await send_risk_alerts(certificates)
+        return certificates
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
@@ -176,6 +200,27 @@ async def scheduler_status(request: Request):
     return {
         "next_scan_at": request.app.state.next_scan_at.isoformat(),
         "interval_hours": int(interval) if interval.is_integer() else interval,
+    }
+
+
+@app.post("/api/test-telegram")
+async def test_telegram_notification():
+    sent = await send_alert(
+        {
+            "host": "demo.certificate-radar.local",
+            "port": 443,
+            "status": "Critical",
+            "risk_score": 85,
+            "risk_level": "Critical",
+            "days_left": 5,
+            "risk_reasons": ["Тестовое уведомление Certificate Radar"],
+            "recommendations": ["Проверьте настройки Telegram и канал оповещений"],
+        },
+        "Ручной тест Telegram-уведомлений",
+    )
+    return {
+        "sent": sent,
+        "message": "Тестовое уведомление отправлено" if sent else "Telegram не настроен или недоступен",
     }
 
 

@@ -13,6 +13,7 @@ from sqlalchemy import select
 
 from app.certificate_checker import scan_targets
 from app.database import Certificate, SessionLocal, upsert_certificate, utc_now
+from app.notifier import alert_trigger, send_alert
 
 
 logger = logging.getLogger(__name__)
@@ -92,8 +93,32 @@ class CertificateScheduler:
                 return 0
 
             results = await scan_targets([_target(host, port) for host, port in rows])
+            alerts: list[tuple[dict, str]] = []
             async with SessionLocal() as session:
                 for result in results:
-                    await upsert_certificate(session, result)
+                    certificate = await upsert_certificate(session, result)
+                    cert_data = {
+                        "host": certificate.host,
+                        "port": certificate.port,
+                        "status": certificate.status,
+                        "risk_score": certificate.risk_score,
+                        "risk_level": certificate.risk_level,
+                        "days_left": certificate.days_left,
+                        "risk_reasons": certificate.risk_reasons,
+                        "recommendations": certificate.recommendations,
+                    }
+                    trigger = alert_trigger(cert_data)
+                    if trigger:
+                        alerts.append(
+                            (
+                                cert_data,
+                                trigger,
+                            )
+                        )
                 await session.commit()
+
+            if alerts:
+                await asyncio.gather(
+                    *(send_alert(cert_data, reason) for cert_data, reason in alerts)
+                )
             return len(results)

@@ -4,37 +4,187 @@ Certificate Radar — веб-сервис для инвентаризации TL
 
 Сервис принимает DNS-имена, IP-адреса, URL и CIDR-сети, проверяет сертификаты параллельно и показывает понятные причины риска и рекомендации администратору.
 
-## Быстрый запуск
+## Подготовка настроек
 
-Требуется только Docker Desktop или Docker Engine с Compose.
+Выполните команду из корневой папки проекта:
+
+```bash
+cp .env.example .env
+```
+
+Откройте `.env` и при необходимости заполните настройки:
+
+```env
+DATABASE_URL=sqlite+aiosqlite:///./data/radar.db
+SCAN_INTERVAL_HOURS=6
+TELEGRAM_BOT_TOKEN=токен_бота
+TELEGRAM_CHAT_ID=id_чата_или_канала
+```
+
+Telegram можно оставить пустым: приложение продолжит работать, но не будет отправлять сообщения. Файл `.env` содержит секреты, уже добавлен в `.gitignore` и не должен попадать в Git.
+
+## Запуск с Docker
+
+### Требования
+
+- установлен и запущен Docker Desktop либо Docker Engine;
+- доступен `docker compose`.
+
+### 1. Соберите и запустите проект
 
 ```bash
 docker compose up --build -d
 ```
 
-Откройте [http://localhost:8000](http://localhost:8000). Проверить состояние контейнера можно командой:
+Команда создаст образ, установит зависимости, подключит SQLite-базу из папки `data/` и запустит FastAPI на порту 8000.
+
+### 2. Проверьте контейнер
 
 ```bash
 docker compose ps
 ```
 
-Остановка проекта:
+В колонке состояния должно появиться `healthy`. Логи приложения:
 
 ```bash
-docker compose down
+docker compose logs -f web
 ```
 
-SQLite-база хранится в локальной папке `data/` и не удаляется при пересборке контейнера.
+Для выхода из просмотра логов нажмите `Ctrl+C`.
 
-## Демо-режим
+### 3. Откройте приложение
 
-После запуска контейнера заполните базу пятью демонстрационными сертификатами BadSSL и Google:
+- Dashboard: [http://localhost:8000](http://localhost:8000)
+- Swagger API: [http://localhost:8000/docs](http://localhost:8000/docs)
+- Healthcheck: [http://localhost:8000/health](http://localhost:8000/health)
+
+### 4. Заполните демо-данными
 
 ```bash
 docker compose exec web python -m app.demo
 ```
 
-Команда создаёт или обновляет:
+После команды обновите страницу браузера. Будут созданы пять сертификатов и по пять исторических точек для каждого. Повторный запуск не создаёт дубликаты.
+
+### 5. Запустите тесты
+
+```bash
+docker compose exec web pytest -q
+```
+
+Ожидаемый результат: все тесты завершились со статусом `passed`.
+
+### 6. Проверьте Telegram
+
+После заполнения `TELEGRAM_BOT_TOKEN` и `TELEGRAM_CHAT_ID` пересоздайте контейнер:
+
+```bash
+docker compose up -d --force-recreate
+```
+
+Отправьте тестовый алерт:
+
+```bash
+curl -X POST http://localhost:8000/api/test-telegram
+```
+
+Успешный ответ содержит `"sent": true`.
+
+### Управление контейнером
+
+```bash
+# Остановить проект, сохранив базу
+docker compose down
+
+# Перезапустить
+docker compose restart web
+
+# Пересобрать после изменения кода или зависимостей
+docker compose up --build -d
+```
+
+## Запуск без Docker
+
+### Требования
+
+- Python 3.11 или новее;
+- `pip`;
+- доступ к интернету для первоначальной установки зависимостей и TLS-проверок.
+
+Если Docker-версия проекта уже работает, сначала освободите порт 8000:
+
+```bash
+docker compose down
+```
+
+### 1. Создайте виртуальное окружение
+
+macOS/Linux:
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+```
+
+Windows PowerShell:
+
+```powershell
+py -m venv .venv
+.venv\Scripts\Activate.ps1
+```
+
+После активации в начале строки терминала обычно появляется `(.venv)`.
+
+### 2. Установите зависимости
+
+```bash
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
+```
+
+### 3. Запустите приложение с `.env`
+
+```bash
+python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload --env-file .env
+```
+
+Откройте [http://127.0.0.1:8000](http://127.0.0.1:8000). Сервер работает, пока открыт терминал. Для остановки нажмите `Ctrl+C`.
+
+### 4. Заполните демо-данными
+
+Откройте второй терминал, перейдите в папку проекта и активируйте то же виртуальное окружение:
+
+```bash
+source .venv/bin/activate
+python -m app.demo
+```
+
+На Windows команда активации:
+
+```powershell
+.venv\Scripts\Activate.ps1
+python -m app.demo
+```
+
+### 5. Запустите тесты
+
+```bash
+python -m pytest -q
+```
+
+Интеграционные тесты используют отдельную временную SQLite-базу и не изменяют рабочие данные. Реальный доступ в интернет для тестов не требуется.
+
+### 6. Проверьте Telegram
+
+```bash
+curl -X POST http://127.0.0.1:8000/api/test-telegram
+```
+
+SQLite-база в локальном режиме также хранится в `data/radar.db`.
+
+## Демо-набор
+
+Команда `python -m app.demo` создаёт или обновляет:
 
 - `google.com`;
 - `expired.badssl.com`;
@@ -42,27 +192,6 @@ docker compose exec web python -m app.demo
 - `wrong.host.badssl.com`;
 - `untrusted-root.badssl.com`;
 - по пять исторических точек для каждого сертификата.
-
-Скрипт идемпотентный: его можно запускать повторно без появления дубликатов.
-
-## Автоматические тесты
-
-Запуск в Docker:
-
-```bash
-docker compose exec web pytest -q
-```
-
-Локальный запуск:
-
-```bash
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-pytest -q
-```
-
-Интеграционные тесты используют отдельную временную SQLite-базу и подменяют TLS-сканер. Для их запуска доступ в интернет не требуется.
 
 ## Архитектура
 
@@ -74,6 +203,7 @@ pytest -q
 | SQLAlchemy 2.0 + aiosqlite | Асинхронное хранение реестра и истории в SQLite |
 | Risk Engine | Расчёт Risk Score 0–100, уровня риска, причин и рекомендаций |
 | Background Scheduler | Повторная проверка сохранённых адресов каждые 6 часов |
+| Telegram Notifier | Асинхронные алерты для Warning, Critical, Expired и Risk Score ≥ 50 |
 | HTML/CSS/JavaScript | Поиск, фильтры, карточки, уведомления и управление Owner |
 
 График истории был исключён из текущего интерфейса. Исторические точки продолжают сохраняться и доступны через REST API.
@@ -124,6 +254,7 @@ Risk Level определяется по итоговому баллу:
 | `PATCH` | `/api/certificates/{id}/owner` | Назначить ответственного |
 | `GET` | `/api/certificates/{id}/history` | Получить историю Risk Score и Days Left |
 | `GET` | `/api/scheduler/status` | Получить время следующего автосканирования |
+| `POST` | `/api/test-telegram` | Отправить тестовое Telegram-уведомление |
 | `GET` | `/api/export/csv` | Скачать реестр в CSV |
 | `GET` | `/health` | Проверить состояние приложения |
 | `GET` | `/docs` | Интерактивная документация OpenAPI |
@@ -148,20 +279,33 @@ cp .env.example .env
 |---|---|---|
 | `DATABASE_URL` | `sqlite+aiosqlite:///./data/radar.db` | Адрес базы данных |
 | `SCAN_INTERVAL_HOURS` | `6` | Интервал автоматической проверки |
-| `TELEGRAM_BOT_TOKEN` | пусто | Зарезервировано для Telegram-уведомлений |
-| `TELEGRAM_CHAT_ID` | пусто | Зарезервировано для Telegram-уведомлений |
+| `TELEGRAM_BOT_TOKEN` | пусто | Токен Telegram-бота от BotFather |
+| `TELEGRAM_CHAT_ID` | пусто | ID пользователя, группы или канала для алертов |
 
-## Запуск без Docker
+## Частые проблемы
 
-```bash
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-uvicorn app.main:app --reload
-```
+### Порт 8000 уже занят
 
-Демо-данные:
+Остановите Docker-контейнер или другой локальный сервер:
 
 ```bash
-python -m app.demo
+docker compose down
 ```
+
+Либо запустите локальную версию на другом порту:
+
+```bash
+python -m uvicorn app.main:app --reload --env-file .env --port 8001
+```
+
+### Docker не увидел изменения `.env`
+
+После сохранения `.env` пересоздайте контейнер:
+
+```bash
+docker compose up -d --force-recreate
+```
+
+### Telegram возвращает `sent: false`
+
+Проверьте токен, Chat ID, наличие бота в группе или канале и права бота на публикацию сообщений. После исправления `.env` пересоздайте контейнер либо перезапустите локальный сервер.
