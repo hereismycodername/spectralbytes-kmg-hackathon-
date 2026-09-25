@@ -3,9 +3,11 @@ from __future__ import annotations
 import asyncio
 import csv
 import io
+import re
 from contextlib import asynccontextmanager
 from datetime import datetime
 from pathlib import Path
+from urllib.parse import quote
 
 from fastapi import Depends, FastAPI, HTTPException, Query, Request, Response
 from fastapi.staticfiles import StaticFiles
@@ -96,6 +98,32 @@ class CertificateHistoryRead(BaseModel):
     days_left: int
 
 
+def certificate_query(status: str | None = None, search: str | None = None):
+    query = select(Certificate)
+    if status and status != "ALL":
+        query = query.where(Certificate.status == status)
+    if search and (term := search.strip()):
+        pattern = f"%{term}%"
+        query = query.where(
+            or_(
+                Certificate.host.ilike(pattern),
+                Certificate.cn.ilike(pattern),
+                Certificate.issuer.ilike(pattern),
+            )
+        )
+    return query
+
+
+def safe_csv_filename(value: str) -> tuple[str, str]:
+    name = value.strip()
+    if name.lower().endswith(".csv"):
+        name = name[:-4]
+    name = re.sub(r"[^\w.-]+", "-", name, flags=re.UNICODE).strip(" .-_")
+    stem = (name or "certificate-radar")[:80]
+    ascii_stem = re.sub(r"[^A-Za-z0-9._-]+", "-", stem).strip(".-_")
+    return f"{stem}.csv", f"{ascii_stem or 'certificate-radar'}.csv"
+
+
 async def save_results(
     session: AsyncSession,
     results: list[TargetResult],
@@ -157,20 +185,9 @@ async def api_certificates(
     search: str | None = Query(default=None),
     session: AsyncSession = Depends(get_session),
 ):
-    query = select(Certificate).order_by(Certificate.last_scanned_at.desc())
-
-    if status:
-        query = query.where(Certificate.status == status)
-    if search:
-        pattern = f"%{search}%"
-        query = query.where(
-            or_(
-                Certificate.host.ilike(pattern),
-                Certificate.cn.ilike(pattern),
-                Certificate.issuer.ilike(pattern),
-            )
-        )
-
+    query = certificate_query(status, search).order_by(
+        Certificate.last_scanned_at.desc()
+    )
     return list((await session.execute(query)).scalars().all())
 
 
@@ -279,9 +296,14 @@ async def update_certificate_owner(
 
 @app.get("/api/export/csv")
 async def export_certificates_csv(
+    status: str | None = Query(default=None),
+    search: str | None = Query(default=None),
+    filename: str = Query(default="certificate-radar", max_length=100),
     session: AsyncSession = Depends(get_session),
 ):
-    query = select(Certificate).order_by(Certificate.host, Certificate.port)
+    query = certificate_query(status, search).order_by(
+        Certificate.host, Certificate.port
+    )
     certificates = list((await session.execute(query)).scalars().all())
 
     output = io.StringIO(newline="")
@@ -333,11 +355,15 @@ async def export_certificates_csv(
             ]
         )
 
+    download_name, ascii_name = safe_csv_filename(filename)
     return Response(
         content="\ufeff" + output.getvalue(),
         media_type="text/csv; charset=utf-8",
         headers={
-            "Content-Disposition": 'attachment; filename="certificate-radar.csv"'
+            "Content-Disposition": (
+                f'attachment; filename="{ascii_name}"; '
+                f"filename*=UTF-8''{quote(download_name)}"
+            )
         },
     )
 

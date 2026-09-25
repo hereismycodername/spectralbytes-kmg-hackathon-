@@ -89,6 +89,59 @@ async def test_export_csv(client, mock_scan):
 
 
 @pytest.mark.asyncio
+async def test_export_csv_uses_custom_filename(client, mock_scan):
+    await create_certificate(client, mock_scan)
+    response = await client.get(
+        "/api/export/csv", params={"filename": "Отчёт жюри.csv"}
+    )
+    disposition = response.headers["content-disposition"]
+    assert "attachment" in disposition
+    assert "filename*=UTF-8''" in disposition
+    assert "%D0%9E%D1%82%D1%87%D1%91%D1%82-%D0%B6%D1%8E%D1%80%D0%B8.csv" in disposition
+
+
+@pytest.mark.asyncio
+async def test_export_csv_applies_status_and_search_filters(client, monkeypatch):
+    async def filtered_scan(_targets):
+        now = datetime.now(timezone.utc)
+        return [
+            TargetResult(
+                target="healthy.example.com",
+                host="healthy.example.com",
+                port=443,
+                status="OK",
+                subject_cn="healthy.example.com",
+                issuer="CN=Healthy CA",
+                not_valid_after=now + timedelta(days=90),
+                days_left=90,
+            ),
+            TargetResult(
+                target="renew.example.com",
+                host="renew.example.com",
+                port=443,
+                status="Information",
+                subject_cn="renew.example.com",
+                issuer="CN=Renewal CA",
+                not_valid_after=now + timedelta(days=45),
+                days_left=45,
+            ),
+        ]
+
+    monkeypatch.setattr(main_module, "scan_targets", filtered_scan)
+    await client.post(
+        "/api/scan",
+        json={"targets": ["healthy.example.com", "renew.example.com"]},
+    )
+    response = await client.get(
+        "/api/export/csv",
+        params={"status": "Information", "search": "renew"},
+    )
+    assert response.status_code == 200
+    assert "renew.example.com" in response.text
+    assert "healthy.example.com" not in response.text
+
+
+@pytest.mark.asyncio
 async def test_certificate_history(client, mock_scan):
     certificate = await create_certificate(client, mock_scan)
     response = await client.get(f"/api/certificates/{certificate['id']}/history")

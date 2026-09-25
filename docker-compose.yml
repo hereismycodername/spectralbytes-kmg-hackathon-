@@ -6,6 +6,8 @@ services:
       - "8000:8000"
     volumes:
       - ./data:/app/data
+      - ./templates:/app/templates
+      - ./static:/app/static
     environment:
       DATABASE_URL: ${DATABASE_URL:-sqlite+aiosqlite:///./data/radar.db}
       SCAN_INTERVAL_HOURS: ${SCAN_INTERVAL_HOURS:-6}

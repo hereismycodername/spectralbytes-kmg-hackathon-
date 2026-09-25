@@ -1,0 +1,900 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Certificate Radar — Презентация</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet"/>
+  <style>
+    /* ═══ RESET & BASE ═══ */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:       #09090b;
+      --bg-2:     #111113;
+      --bg-3:     #18181b;
+      --bg-card:  #1c1c1f;
+      --border:   rgba(255,255,255,0.07);
+      --text:     #f0f0f0;
+      --text-2:   #a1a1aa;
+      --text-3:   #52525b;
+      --accent:   #5b6af0;
+      --accent-2: #818cf8;
+      --green:    #3dd68c;
+      --orange:   #f59e0b;
+      --red:      #f87171;
+      --cyan:     #22d3ee;
+    }
+
+    html {
+      scroll-behavior: smooth;
+      scroll-snap-type: y mandatory;
+    }
+
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      overflow-x: hidden;
+    }
+
+    /* ═══ SLIDE SYSTEM ═══ */
+    .slide {
+      min-height: 100vh;
+      scroll-snap-align: start;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      padding: 60px 40px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .slide-inner {
+      max-width: 1100px;
+      width: 100%;
+      z-index: 2;
+    }
+
+    /* ═══ BACKGROUNDS ═══ */
+    .slide-hero {
+      background:
+        radial-gradient(ellipse 80% 50% at 50% -20%, rgba(91,106,240,0.2), transparent),
+        radial-gradient(ellipse 60% 40% at 80% 80%, rgba(34,211,238,0.08), transparent),
+        var(--bg);
+    }
+
+    .slide-dark {
+      background:
+        radial-gradient(ellipse 50% 50% at 20% 80%, rgba(91,106,240,0.08), transparent),
+        var(--bg);
+    }
+
+    .slide-accent {
+      background:
+        radial-gradient(ellipse 60% 50% at 70% 20%, rgba(91,106,240,0.12), transparent),
+        radial-gradient(ellipse 40% 40% at 10% 90%, rgba(61,214,140,0.06), transparent),
+        var(--bg);
+    }
+
+    .slide-problem {
+      background:
+        radial-gradient(ellipse 50% 40% at 30% 30%, rgba(248,113,113,0.1), transparent),
+        var(--bg);
+    }
+
+    .slide-tech {
+      background:
+        radial-gradient(ellipse 60% 60% at 80% 50%, rgba(34,211,238,0.08), transparent),
+        var(--bg);
+    }
+
+    .slide-final {
+      background:
+        radial-gradient(ellipse 80% 60% at 50% 50%, rgba(91,106,240,0.15), transparent),
+        radial-gradient(ellipse 40% 40% at 20% 80%, rgba(61,214,140,0.08), transparent),
+        var(--bg);
+    }
+
+    /* ═══ NAVIGATION ═══ */
+    .nav-dots {
+      position: fixed;
+      right: 24px;
+      top: 50%;
+      transform: translateY(-50%);
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      z-index: 100;
+    }
+
+    .nav-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--text-3);
+      border: none;
+      cursor: pointer;
+      transition: all 0.3s;
+      padding: 0;
+    }
+
+    .nav-dot:hover { background: var(--text-2); transform: scale(1.4); }
+    .nav-dot.active { background: var(--accent); transform: scale(1.5); box-shadow: 0 0 12px rgba(91,106,240,0.5); }
+
+    /* ═══ TYPOGRAPHY ═══ */
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 16px;
+      border-radius: 999px;
+      border: 1px solid rgba(91,106,240,0.3);
+      background: rgba(91,106,240,0.1);
+      color: var(--accent-2);
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin-bottom: 28px;
+    }
+
+    .hero-badge::before {
+      content: '';
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: var(--accent);
+      animation: pulse 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.4;transform:scale(0.8)} }
+
+    h1 {
+      font-size: clamp(40px, 6vw, 72px);
+      font-weight: 900;
+      letter-spacing: -0.04em;
+      line-height: 1.05;
+      margin-bottom: 20px;
+    }
+
+    h1 .gradient {
+      background: linear-gradient(135deg, #fff 0%, var(--accent-2) 50%, var(--cyan) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    h2 {
+      font-size: clamp(28px, 4vw, 44px);
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      line-height: 1.15;
+      margin-bottom: 16px;
+    }
+
+    h2 .gradient {
+      background: linear-gradient(135deg, #fff 0%, var(--accent-2) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .subtitle {
+      font-size: 18px;
+      color: var(--text-2);
+      max-width: 620px;
+      line-height: 1.7;
+    }
+
+    .section-label {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--accent-2);
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      margin-bottom: 12px;
+    }
+
+    /* ═══ CARDS GRID ═══ */
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 16px;
+      margin-top: 32px;
+    }
+
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 28px 24px;
+      transition: border-color 0.2s, transform 0.2s;
+    }
+
+    .card:hover {
+      border-color: rgba(91,106,240,0.25);
+      transform: translateY(-3px);
+    }
+
+    .card-icon {
+      width: 44px;
+      height: 44px;
+      border-radius: 11px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 18px;
+      font-size: 20px;
+    }
+
+    .card-icon.green  { background: rgba(61,214,140,0.12); color: var(--green); }
+    .card-icon.orange { background: rgba(245,158,11,0.12); color: var(--orange); }
+    .card-icon.red    { background: rgba(248,113,113,0.12); color: var(--red); }
+    .card-icon.cyan   { background: rgba(34,211,238,0.12); color: var(--cyan); }
+    .card-icon.accent { background: rgba(91,106,240,0.12); color: var(--accent-2); }
+
+    .card h3 {
+      font-size: 16px;
+      font-weight: 700;
+      margin-bottom: 8px;
+      color: var(--text);
+    }
+
+    .card p {
+      font-size: 13.5px;
+      color: var(--text-2);
+      line-height: 1.6;
+    }
+
+    /* ═══ STATS ROW ═══ */
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 14px;
+      margin-top: 32px;
+    }
+
+    .stat-box {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 24px 20px;
+      text-align: center;
+      transition: border-color 0.2s;
+    }
+
+    .stat-box:hover { border-color: rgba(91,106,240,0.2); }
+
+    .stat-number {
+      font-size: 36px;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      line-height: 1;
+      margin-bottom: 6px;
+    }
+
+    .stat-number.green  { color: var(--green); }
+    .stat-number.orange { color: var(--orange); }
+    .stat-number.red    { color: var(--red); }
+    .stat-number.accent { color: var(--accent-2); }
+
+    .stat-label {
+      font-size: 12px;
+      color: var(--text-3);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+    }
+
+    /* ═══ SCREENSHOT ═══ */
+    .screenshot-wrap {
+      margin-top: 36px;
+      border-radius: 14px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+      box-shadow:
+        0 20px 60px rgba(0,0,0,0.4),
+        0 0 0 1px rgba(91,106,240,0.08);
+    }
+
+    .screenshot-wrap img {
+      width: 100%;
+      display: block;
+    }
+
+    /* ═══ ARCHITECTURE ═══ */
+    .arch-flow {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0;
+      margin-top: 36px;
+      flex-wrap: wrap;
+    }
+
+    .arch-node {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 18px 24px;
+      text-align: center;
+      min-width: 140px;
+      transition: border-color 0.2s;
+    }
+
+    .arch-node:hover { border-color: rgba(91,106,240,0.25); }
+
+    .arch-node-icon {
+      font-size: 28px;
+      margin-bottom: 8px;
+    }
+
+    .arch-node-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .arch-node-sub {
+      font-size: 11px;
+      color: var(--text-3);
+      margin-top: 3px;
+    }
+
+    .arch-arrow {
+      color: var(--text-3);
+      font-size: 24px;
+      padding: 0 8px;
+      flex-shrink: 0;
+    }
+
+    /* ═══ RISK TABLE ═══ */
+    .risk-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 28px;
+    }
+
+    .risk-table th,
+    .risk-table td {
+      padding: 14px 18px;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+      font-size: 14px;
+    }
+
+    .risk-table th {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--text-3);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .risk-table td { color: var(--text-2); }
+    .risk-table td:first-child { color: var(--text); font-weight: 600; font-family: 'SFMono-Regular', monospace; }
+
+    .risk-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 3px 10px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .risk-pill.low      { color: var(--green);  background: rgba(61,214,140,0.1); }
+    .risk-pill.medium   { color: var(--orange); background: rgba(245,158,11,0.1); }
+    .risk-pill.high     { color: #ff9f43;       background: rgba(255,159,67,0.1); }
+    .risk-pill.critical { color: var(--red);    background: rgba(248,113,113,0.1); }
+
+    /* ═══ TWO COLUMNS ═══ */
+    .two-col {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 40px;
+      margin-top: 32px;
+      align-items: start;
+    }
+
+    .feature-list {
+      list-style: none;
+    }
+
+    .feature-list li {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 12px 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 14px;
+      color: var(--text-2);
+    }
+
+    .feature-list li:last-child { border-bottom: none; }
+
+    .feature-check {
+      width: 22px;
+      height: 22px;
+      border-radius: 6px;
+      background: rgba(61,214,140,0.12);
+      color: var(--green);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    /* ═══ TEAM BADGE ═══ */
+    .team-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 20px;
+      border-radius: 12px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      margin-top: 20px;
+    }
+
+    .team-avatar {
+      width: 36px; height: 36px;
+      border-radius: 8px;
+      background: var(--accent);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 14px;
+    }
+
+    .team-info-name {
+      font-weight: 700;
+      font-size: 14px;
+    }
+
+    .team-info-role {
+      font-size: 12px;
+      color: var(--text-3);
+    }
+
+    /* ═══ CTA ═══ */
+    .cta-buttons {
+      display: flex;
+      gap: 12px;
+      margin-top: 32px;
+      flex-wrap: wrap;
+    }
+
+    .cta {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 28px;
+      border-radius: 10px;
+      font-size: 15px;
+      font-weight: 700;
+      text-decoration: none;
+      transition: transform 0.15s, box-shadow 0.2s;
+    }
+
+    .cta:hover { transform: translateY(-2px); }
+
+    .cta-primary {
+      background: var(--accent);
+      color: white;
+      box-shadow: 0 4px 24px rgba(91,106,240,0.3);
+    }
+
+    .cta-primary:hover { box-shadow: 0 8px 32px rgba(91,106,240,0.45); }
+
+    .cta-secondary {
+      background: var(--bg-card);
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+
+    .cta-secondary:hover { border-color: rgba(91,106,240,0.3); }
+
+    /* ═══ SLIDE NUMBER ═══ */
+    .slide-number {
+      position: absolute;
+      bottom: 24px;
+      right: 32px;
+      font-size: 12px;
+      color: var(--text-3);
+      font-weight: 600;
+    }
+
+    /* ═══ KEYBOARD HINT ═══ */
+    .keyboard-hint {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 16px;
+      border-radius: 8px;
+      background: rgba(28,28,31,0.9);
+      border: 1px solid var(--border);
+      font-size: 12px;
+      color: var(--text-3);
+      z-index: 100;
+      backdrop-filter: blur(8px);
+      animation: fade-hint 5s ease-in-out forwards;
+    }
+
+    .keyboard-hint kbd {
+      padding: 2px 7px;
+      border-radius: 4px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      font-family: inherit;
+      font-size: 11px;
+    }
+
+    @keyframes fade-hint {
+      0%,70% { opacity: 1; }
+      100% { opacity: 0; pointer-events: none; }
+    }
+
+    /* ═══ RESPONSIVE ═══ */
+    @media (max-width: 768px) {
+      .slide { padding: 40px 20px; }
+      .stats-row { grid-template-columns: 1fr 1fr; }
+      .two-col { grid-template-columns: 1fr; }
+      .arch-flow { flex-direction: column; }
+      .arch-arrow { transform: rotate(90deg); }
+      .nav-dots { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ═══ NAVIGATION DOTS ═══ -->
+<nav class="nav-dots" id="nav-dots"></nav>
+
+<!-- ═══ KEYBOARD HINT ═══ -->
+<div class="keyboard-hint">
+  Навигация: <kbd>↑</kbd> <kbd>↓</kbd> или скролл
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     SLIDE 1 — TITLE
+═══════════════════════════════════════════════ -->
+<section class="slide slide-hero" id="slide-1">
+  <div class="slide-inner">
+    <div class="hero-badge">Infrastructure Risk Radar</div>
+    <h1>
+      <span class="gradient">Certificate Radar</span>
+    </h1>
+    <p class="subtitle">
+      Автоматическое обнаружение, инвентаризация и мониторинг TLS/SSL-сертификатов
+      корпоративной инфраструктуры. Оценка рисков и рекомендации в реальном времени.
+    </p>
+    <div class="cta-buttons">
+      <a class="cta cta-primary" href="#slide-2">Смотреть →</a>
+      <a class="cta cta-secondary" href="http://localhost:8000" target="_blank">Открыть Dashboard</a>
+    </div>
+
+    <div class="team-badge">
+      <div class="team-avatar">SB</div>
+      <div>
+        <div class="team-info-name">Spectral Bytes</div>
+        <div class="team-info-role">KMG Hackathon 2026</div>
+      </div>
+    </div>
+  </div>
+  <span class="slide-number">01 / 08</span>
+</section>
+
+<!-- ═══════════════════════════════════════════════
+     SLIDE 2 — PROBLEM
+═══════════════════════════════════════════════ -->
+<section class="slide slide-problem" id="slide-2">
+  <div class="slide-inner">
+    <p class="section-label">Проблема</p>
+    <h2>Почему сертификаты — <span class="gradient">это проблема?</span></h2>
+    <p class="subtitle">
+      Крупные компании управляют сотнями TLS-сертификатов.
+      Истекший или некорректно настроенный сертификат — это простой сервиса, потеря данных и репутации.
+    </p>
+
+    <div class="stats-row">
+      <div class="stat-box">
+        <div class="stat-number red">60%</div>
+        <div class="stat-label">Сбоев из-за<br/>просроченных серт.</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-number orange">$5.6M</div>
+        <div class="stat-label">Средний ущерб от<br/>инцидента с TLS</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-number accent">73%</div>
+        <div class="stat-label">Компаний не имеют<br/>инвентаризации</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-number green">90дн</div>
+        <div class="stat-label">Новый стандарт<br/>срока жизни серт.</div>
+      </div>
+    </div>
+  </div>
+  <span class="slide-number">02 / 08</span>
+</section>
+
+<!-- ═══════════════════════════════════════════════
+     SLIDE 3 — SOLUTION
+═══════════════════════════════════════════════ -->
+<section class="slide slide-accent" id="slide-3">
+  <div class="slide-inner">
+    <p class="section-label">Решение</p>
+    <h2><span class="gradient">Certificate Radar</span> решает это</h2>
+    <p class="subtitle">
+      Единая платформа для сканирования, инвентаризации и мониторинга
+      всех TLS-сертификатов вашей инфраструктуры.
+    </p>
+
+    <div class="cards">
+      <div class="card">
+        <div class="card-icon cyan">🔍</div>
+        <h3>Авто-обнаружение</h3>
+        <p>DNS-имена, IP-адреса, URL и CIDR-сети. Параллельное сканирование за секунды.</p>
+      </div>
+      <div class="card">
+        <div class="card-icon accent">📊</div>
+        <h3>Risk Engine</h3>
+        <p>Оценка от 0 до 100 баллов. Причины риска и конкретные рекомендации для каждого сертификата.</p>
+      </div>
+      <div class="card">
+        <div class="card-icon green">🔔</div>
+        <h3>Telegram-алерты</h3>
+        <p>Уведомления о критических проблемах прямо в мессенджер. Warning, Critical, Expired.</p>
+      </div>
+      <div class="card">
+        <div class="card-icon orange">⏱️</div>
+        <h3>Автосканирование</h3>
+        <p>Фоновая проверка каждые 6 часов. Настраиваемый интервал. Без ручного вмешательства.</p>
+      </div>
+    </div>
+  </div>
+  <span class="slide-number">03 / 08</span>
+</section>
+
+<!-- ═══════════════════════════════════════════════
+     SLIDE 4 — DEMO SCREENSHOT
+═══════════════════════════════════════════════ -->
+<section class="slide slide-dark" id="slide-4">
+  <div class="slide-inner">
+    <p class="section-label">Демо</p>
+    <h2>Интерфейс <span class="gradient">Dashboard</span></h2>
+    <p class="subtitle">
+      Тёмный минималистичный интерфейс в стиле Linear. Sidebar-навигация, карточки сертификатов,
+      цветовая индикация статусов, фильтры и поиск.
+    </p>
+    <div class="screenshot-wrap">
+      <img src="dashboard.png" alt="Certificate Radar Dashboard"/>
+    </div>
+  </div>
+  <span class="slide-number">04 / 08</span>
+</section>
+
+<!-- ═══════════════════════════════════════════════
+     SLIDE 5 — RISK ENGINE
+═══════════════════════════════════════════════ -->
+<section class="slide slide-accent" id="slide-5">
+  <div class="slide-inner">
+    <p class="section-label">Risk Engine</p>
+    <h2>Что проверяет <span class="gradient">Risk Engine?</span></h2>
+
+    <div class="two-col">
+      <div>
+        <ul class="feature-list">
+          <li><span class="feature-check">✓</span> Срок действия сертификата</li>
+          <li><span class="feature-check">✓</span> Hostname vs SAN/CN</li>
+          <li><span class="feature-check">✓</span> Доверие цепочке сертификации</li>
+          <li><span class="feature-check">✓</span> Self-Signed обнаружение</li>
+          <li><span class="feature-check">✓</span> SHA-1 / MD5 в подписи</li>
+          <li><span class="feature-check">✓</span> Слабые ключи RSA < 2048 / EC < 256</li>
+          <li><span class="feature-check">✓</span> Назначение ответственного</li>
+        </ul>
+      </div>
+      <div>
+        <table class="risk-table">
+          <thead>
+            <tr><th>Risk Score</th><th>Уровень</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>0 — 20</td><td><span class="risk-pill low">Low</span></td></tr>
+            <tr><td>21 — 50</td><td><span class="risk-pill medium">Medium</span></td></tr>
+            <tr><td>51 — 80</td><td><span class="risk-pill high">High</span></td></tr>
+            <tr><td>81 — 100</td><td><span class="risk-pill critical">Critical</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  <span class="slide-number">05 / 08</span>
+</section>
+
+<!-- ═══════════════════════════════════════════════
+     SLIDE 6 — ARCHITECTURE
+═══════════════════════════════════════════════ -->
+<section class="slide slide-tech" id="slide-6">
+  <div class="slide-inner">
+    <p class="section-label">Архитектура</p>
+    <h2>Как это <span class="gradient">работает</span></h2>
+
+    <div class="arch-flow">
+      <div class="arch-node">
+        <div class="arch-node-icon">🌐</div>
+        <div class="arch-node-title">Browser</div>
+        <div class="arch-node-sub">Dashboard UI</div>
+      </div>
+      <div class="arch-arrow">→</div>
+      <div class="arch-node">
+        <div class="arch-node-icon">⚡</div>
+        <div class="arch-node-title">FastAPI</div>
+        <div class="arch-node-sub">REST API</div>
+      </div>
+      <div class="arch-arrow">→</div>
+      <div class="arch-node">
+        <div class="arch-node-icon">🔒</div>
+        <div class="arch-node-title">TLS Scanner</div>
+        <div class="arch-node-sub">AsyncIO + ssl</div>
+      </div>
+      <div class="arch-arrow">→</div>
+      <div class="arch-node">
+        <div class="arch-node-icon">📊</div>
+        <div class="arch-node-title">Risk Engine</div>
+        <div class="arch-node-sub">Score 0–100</div>
+      </div>
+      <div class="arch-arrow">→</div>
+      <div class="arch-node">
+        <div class="arch-node-icon">💾</div>
+        <div class="arch-node-title">SQLite</div>
+        <div class="arch-node-sub">SQLAlchemy 2.0</div>
+      </div>
+    </div>
+
+    <div class="cards" style="margin-top:28px">
+      <div class="card">
+        <div class="card-icon accent">🐍</div>
+        <h3>Python + FastAPI</h3>
+        <p>Асинхронный бэкенд, серверный рендеринг dashboard, REST API с документацией OpenAPI.</p>
+      </div>
+      <div class="card">
+        <div class="card-icon green">🐳</div>
+        <h3>Docker Ready</h3>
+        <p>Один docker compose up — и всё работает. Healthcheck, автоматический рестарт.</p>
+      </div>
+      <div class="card">
+        <div class="card-icon cyan">📱</div>
+        <h3>Telegram Notifier</h3>
+        <p>Асинхронные алерты. Markdown-форматирование. Настройка через .env.</p>
+      </div>
+    </div>
+  </div>
+  <span class="slide-number">06 / 08</span>
+</section>
+
+<!-- ═══════════════════════════════════════════════
+     SLIDE 7 — API
+═══════════════════════════════════════════════ -->
+<section class="slide slide-dark" id="slide-7">
+  <div class="slide-inner">
+    <p class="section-label">REST API</p>
+    <h2>Полноценный <span class="gradient">REST API</span></h2>
+    <p class="subtitle">9 эндпоинтов. Интерактивная документация Swagger. CSV-экспорт.</p>
+
+    <table class="risk-table" style="margin-top:28px">
+      <thead>
+        <tr><th>Метод</th><th>Endpoint</th><th>Назначение</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>POST</td><td>/api/scan</td><td>Проверить список адресов</td></tr>
+        <tr><td>GET</td><td>/api/certificates</td><td>Реестр сертификатов</td></tr>
+        <tr><td>PATCH</td><td>/api/certificates/{id}/owner</td><td>Назначить ответственного</td></tr>
+        <tr><td>GET</td><td>/api/certificates/{id}/history</td><td>История Risk Score</td></tr>
+        <tr><td>GET</td><td>/api/scheduler/status</td><td>Статус планировщика</td></tr>
+        <tr><td>POST</td><td>/api/test-telegram</td><td>Тестовое уведомление</td></tr>
+        <tr><td>GET</td><td>/api/export/csv</td><td>Экспорт в CSV</td></tr>
+        <tr><td>GET</td><td>/health</td><td>Healthcheck</td></tr>
+        <tr><td>GET</td><td>/docs</td><td>OpenAPI Docs</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <span class="slide-number">07 / 08</span>
+</section>
+
+<!-- ═══════════════════════════════════════════════
+     SLIDE 8 — CLOSING
+═══════════════════════════════════════════════ -->
+<section class="slide slide-final" id="slide-8">
+  <div class="slide-inner" style="text-align:center">
+    <div class="hero-badge">KMG Hackathon 2026</div>
+    <h1><span class="gradient">Спасибо!</span></h1>
+    <p class="subtitle" style="margin:0 auto 32px;text-align:center">
+      Certificate Radar — ваш радар безопасности TLS-инфраструктуры.<br/>
+      Вопросы?
+    </p>
+    <div class="cta-buttons" style="justify-content:center">
+      <a class="cta cta-primary" href="http://localhost:8000" target="_blank">🚀 Живое демо</a>
+      <a class="cta cta-secondary" href="http://localhost:8000/docs" target="_blank">📖 API Docs</a>
+    </div>
+
+    <div class="team-badge" style="margin-top:40px">
+      <div class="team-avatar">SB</div>
+      <div style="text-align:left">
+        <div class="team-info-name">Spectral Bytes</div>
+        <div class="team-info-role">Infrastructure Risk Radar</div>
+      </div>
+    </div>
+  </div>
+  <span class="slide-number">08 / 08</span>
+</section>
+
+<script>
+  // ═══ NAVIGATION DOTS ═══
+  const slides = document.querySelectorAll('.slide');
+  const dotsContainer = document.getElementById('nav-dots');
+
+  slides.forEach((slide, i) => {
+    const dot = document.createElement('button');
+    dot.className = 'nav-dot';
+    dot.setAttribute('aria-label', `Слайд ${i + 1}`);
+    dot.addEventListener('click', () => slide.scrollIntoView({ behavior: 'smooth' }));
+    dotsContainer.appendChild(dot);
+  });
+
+  const dots = dotsContainer.querySelectorAll('.nav-dot');
+
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        const idx = Array.from(slides).indexOf(entry.target);
+        dots.forEach((d, i) => d.classList.toggle('active', i === idx));
+      }
+    });
+  }, { threshold: 0.5 });
+
+  slides.forEach(s => observer.observe(s));
+
+  // ═══ KEYBOARD NAVIGATION ═══
+  let currentSlide = 0;
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowDown' || e.key === 'ArrowRight' || e.key === ' ') {
+      e.preventDefault();
+      currentSlide = Math.min(currentSlide + 1, slides.length - 1);
+      slides[currentSlide].scrollIntoView({ behavior: 'smooth' });
+    }
+    if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') {
+      e.preventDefault();
+      currentSlide = Math.max(currentSlide - 1, 0);
+      slides[currentSlide].scrollIntoView({ behavior: 'smooth' });
+    }
+  });
+
+  // Track current slide via scroll
+  const scrollObserver = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        currentSlide = Array.from(slides).indexOf(entry.target);
+      }
+    });
+  }, { threshold: 0.5 });
+
+  slides.forEach(s => scrollObserver.observe(s));
+</script>
+
+</body>
+</html>

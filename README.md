@@ -255,7 +255,7 @@ Risk Level определяется по итоговому баллу:
 | `GET` | `/api/certificates/{id}/history` | Получить историю Risk Score и Days Left |
 | `GET` | `/api/scheduler/status` | Получить время следующего автосканирования |
 | `POST` | `/api/test-telegram` | Отправить тестовое Telegram-уведомление |
-| `GET` | `/api/export/csv` | Скачать реестр в CSV |
+| `GET` | `/api/export/csv` | Скачать CSV; параметры `status`, `search`, `filename` |
 | `GET` | `/health` | Проверить состояние приложения |
 | `GET` | `/docs` | Интерактивная документация OpenAPI |
 

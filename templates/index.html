@@ -8,337 +8,384 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="stylesheet" href="{{ url_for('static', path='/style.css') }}" />
-    <style>
-      .dashboard-toolbar { display:grid; grid-template-columns:1fr 190px auto; gap:10px; margin:16px 0; }
-      .search-input,.status-filter { min-width:0; border:1px solid var(--border); border-radius:10px; padding:11px 13px; background:var(--bg-3); color:var(--text-primary); font:inherit; }
-      .search-input:focus,.status-filter:focus { outline:none; border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-glow); }
-      .secondary-button { display:inline-flex; align-items:center; justify-content:center; border:1px solid var(--border); border-radius:10px; padding:0 16px; color:var(--text-primary); background:var(--bg-3); font-size:.85rem; font-weight:700; text-decoration:none; }
-      .secondary-button:hover { border-color:var(--accent); }
-      .certificate-card-header-actions { display:flex; align-items:center; flex-wrap:wrap; justify-content:flex-end; gap:8px; }
-      .problem-badge { display:inline-flex; border-radius:999px; padding:4px 9px; color:var(--warn-color); background:var(--warn-bg); border:1px solid var(--warn-border); font-size:.68rem; font-weight:800; text-transform:uppercase; }
-      .owner-field { display:flex; align-items:center; gap:8px; }
-      .owner-edit { border:1px solid var(--border); border-radius:7px; padding:4px 8px; background:transparent; color:var(--text-secondary); cursor:pointer; }
-      .owner-edit:hover { color:var(--text-primary); border-color:var(--accent); }
-      .risk-badge { display:inline-flex; align-items:center; gap:6px; border:1px solid; border-radius:999px; padding:5px 10px; font-size:.72rem; font-weight:800; }
-      .risk-low { color:#46d39a; background:rgba(70,211,154,.1); border-color:rgba(70,211,154,.35); }
-      .risk-medium { color:#f5c451; background:rgba(245,196,81,.1); border-color:rgba(245,196,81,.35); }
-      .risk-high { color:#ff9f43; background:rgba(255,159,67,.1); border-color:rgba(255,159,67,.35); }
-      .risk-critical { color:#ff6b78; background:rgba(255,107,120,.1); border-color:rgba(255,107,120,.35); }
-      .details-button { border:1px solid var(--border); border-radius:8px; padding:6px 10px; background:transparent; color:var(--text-secondary); font:inherit; font-size:.75rem; font-weight:700; cursor:pointer; }
-      .details-button:hover { color:var(--text-primary); border-color:var(--accent); }
-      .risk-details { margin-top:16px; padding:16px; border:1px solid var(--border); border-radius:10px; background:var(--bg-3); }
-      .risk-details[hidden] { display:none; }
-      .risk-details-grid { display:grid; grid-template-columns:1fr 1fr; gap:22px; }
-      .risk-details h3 { margin:0 0 8px; font-size:.82rem; color:var(--text-primary); }
-      .risk-details ul { margin:0; padding-left:20px; color:var(--text-secondary); font-size:.82rem; line-height:1.6; }
-      .scheduler-badge { display:inline-flex; margin-top:14px; border:1px solid var(--border); border-radius:999px; padding:7px 12px; background:var(--bg-3); color:var(--text-secondary); font-size:.76rem; font-weight:700; }
-      .toast-container { position:fixed; top:20px; right:20px; z-index:1000; display:grid; gap:10px; width:min(380px,calc(100vw - 40px)); }
-      .toast { padding:14px 16px; border:1px solid var(--crit-border); border-radius:12px; background:var(--bg-2); color:var(--text-primary); box-shadow:0 16px 40px rgba(0,0,0,.32); animation:toast-in .2s ease-out; }
-      .toast strong { display:block; margin-bottom:4px; color:var(--crit-color); }
-      .toast span { color:var(--text-secondary); font-size:.82rem; }
-      @keyframes toast-in { from { opacity:0; transform:translateY(-8px); } }
-      .empty-state { padding:26px; border:1px dashed var(--border); border-radius:12px; color:var(--text-secondary); text-align:center; }
-      .dashboard-error { margin-bottom:16px; padding:12px 16px; border:1px solid var(--crit-border); border-radius:10px; background:var(--crit-bg); color:var(--crit-color); }
-      @media (max-width:760px) { .dashboard-toolbar,.risk-details-grid { grid-template-columns:1fr; } .secondary-button { min-height:44px; } }
-    </style>
   </head>
   <body>
-    <main class="container">
 
-      <!-- ── Header ── -->
-      <header class="page-header">
-        <span class="eyebrow">Infrastructure Risk Radar</span>
-        <h1>Certificate Radar</h1>
-        <p class="subtitle">
-          Автоматическое обнаружение, инвентаризация и мониторинг TLS/SSL-сертификатов корпоративной инфраструктуры.
-        </p>
-        <span id="scheduler-badge" class="scheduler-badge">Автосканирование: загрузка…</span>
+    <!-- ══════════════ SIDEBAR ══════════════ -->
+    <aside class="sidebar">
+      <a class="sidebar-logo" href="/">
+        <span class="sidebar-logo-icon">
+          <svg width="14" height="14" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="12" cy="12" r="10" stroke="white" stroke-width="2" fill="none"/>
+            <circle cx="12" cy="12" r="5" stroke="white" stroke-width="2" fill="none"/>
+            <line x1="12" y1="2" x2="12" y2="7" stroke="white" stroke-width="2"/>
+          </svg>
+        </span>
+        <span class="sidebar-logo-text">Cert Radar</span>
+      </a>
+
+      <div class="sidebar-section">
+        <p class="sidebar-section-label">Основное</p>
+        <ul class="sidebar-nav">
+          <li>
+            <a href="/" class="active">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="3" width="7" height="7" rx="1"/>
+                <rect x="14" y="3" width="7" height="7" rx="1"/>
+                <rect x="3" y="14" width="7" height="7" rx="1"/>
+                <rect x="14" y="14" width="7" height="7" rx="1"/>
+              </svg>
+              <span>Дашборд</span>
+            </a>
+          </li>
+          <li>
+            <a href="/api/certificates">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M9 12l2 2 4-4"/>
+                <path d="M12 2a10 10 0 100 20 10 10 0 000-20z"/>
+              </svg>
+              <span>Реестр</span>
+            </a>
+          </li>
+          <li>
+            <a href="/api/export/csv" data-export-csv>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+                <polyline points="7 10 12 15 17 10"/>
+                <line x1="12" y1="15" x2="12" y2="3"/>
+              </svg>
+              <span>Экспорт CSV</span>
+            </a>
+          </li>
+          <li>
+            <a href="/docs" target="_blank">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+                <polyline points="14 2 14 8 20 8"/>
+              </svg>
+              <span>API Docs</span>
+            </a>
+          </li>
+        </ul>
+      </div>
+
+      <div class="sidebar-spacer"></div>
+
+      <div class="sidebar-footer">
+        <div class="sidebar-scheduler">
+          <span class="scheduler-dot"></span>
+          <span id="scheduler-badge" class="sidebar-scheduler-text">Загрузка…</span>
+        </div>
+      </div>
+    </aside>
+
+    <!-- ══════════════ MAIN ══════════════ -->
+    <div class="app-main">
+
+      <!-- Top bar -->
+      <header class="topbar">
+        <span class="topbar-title">Дашборд</span>
+        <div class="topbar-actions">
+          <a class="tb-btn" href="/api/export/csv" data-export-csv>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+              <polyline points="7 10 12 15 17 10"/>
+              <line x1="12" y1="15" x2="12" y2="3"/>
+            </svg>
+            CSV
+          </a>
+          <a class="tb-btn" href="/docs" target="_blank">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"/>
+              <line x1="12" y1="8" x2="12" y2="12"/>
+              <line x1="12" y1="16" x2="12.01" y2="16"/>
+            </svg>
+            API
+          </a>
+        </div>
       </header>
 
-      <!-- ── Stats ── -->
-      <section class="stats" aria-label="Состояние проекта">
-        <article class="stat-card">
-          <span class="stat-label">Сервисов проверено</span>
-          <strong id="stat-total">{{ results | length }}</strong>
-        </article>
-        <article class="stat-card">
-          <span class="stat-label">Проблем найдено</span>
-          <strong id="stat-problems">{{ results | selectattr('status', 'ne', 'OK') | list | length }}</strong>
-        </article>
-        <article class="stat-card">
-          <span class="stat-label">Статус</span>
-          <strong class="status" id="stat-status">{{ "Проверка выполнена" if results or error else "Готово к проверке" }}</strong>
-        </article>
-      </section>
+      <div class="page-content">
 
-      <!-- ── Scan Form ── -->
-      <section class="panel intro-panel">
-        <h2>Проверить сервис</h2>
-        <p>Введите один или несколько адресов — по одному в строке. Можно указать URL, адрес с портом или CIDR-сеть. По умолчанию используется порт 443.</p>
-        <form id="scan-form" class="check-form">
-          <label for="target">Адреса сервисов</label>
-          <div class="form-row">
-            <textarea id="target" name="target"
-              placeholder="google.com&#10;expired.badssl.com&#10;192.168.1.0/30"
-              required>{{ targets }}</textarea>
-            <button id="submit-btn" class="button" type="submit">Проверить</button>
-          </div>
-        </form>
-      </section>
-
-      <!-- ── Error banner ── -->
-      {% if error %}
-      <section class="panel error-panel" role="alert">
-        <h2>Не удалось выполнить проверку</h2>
-        <p>{{ error }}</p>
-      </section>
-      {% endif %}
-
-      <div id="dashboard-error" class="dashboard-error" hidden></div>
-
-      <section class="dashboard-toolbar" aria-label="Фильтры реестра">
-        <input id="registry-search" class="search-input" type="search" placeholder="Поиск по Host, CN или Issuer" />
-        <select id="status-filter" class="status-filter" aria-label="Фильтр по статусу">
-          <option value="ALL">Все статусы</option>
-          <option value="OK">OK</option>
-          <option value="Information">Information</option>
-          <option value="Warning">Warning</option>
-          <option value="Critical">Critical</option>
-          <option value="Expired">Expired</option>
-          <option value="Error">Error</option>
-        </select>
-        <a class="secondary-button" href="/api/export/csv" download>Скачать CSV</a>
-      </section>
-
-      <!-- ── Results ── -->
-      <section id="results-panel" class="panel result-panel" {% if not results %}hidden{% endif %}>
-        <p class="eyebrow">Результаты проверки</p>
-        <div id="certificate-list" class="certificate-list">
-          {% for r in results %}
-          <article class="certificate-card status-{{ r.status | lower }}">
-            <div class="certificate-card-header">
-              <span class="cert-host">
-                {{ r.target }}
-              </span>
-              <div class="certificate-card-header-actions">
-                {% if r.is_self_signed %}<span class="problem-badge">Self-Signed</span>{% endif %}
-                {% if r.hostname_mismatch %}<span class="problem-badge">Mismatch</span>{% endif %}
-                {% if r.untrusted_chain %}<span class="problem-badge">Untrusted</span>{% endif %}
-                {% if r.weak_signature %}<span class="problem-badge">Weak Signature</span>{% endif %}
-                {% if r.weak_key %}<span class="problem-badge">Weak Key</span>{% endif %}
-                <span class="risk-badge risk-{{ r.risk_level | lower }}">{{ r.risk_score }}/100 · {{ r.risk_level }}</span>
-                <span class="badge badge-{{ r.status | lower }}">{{ r.status }}</span>
-              </div>
-            </div>
-            {% if r.status != 'Error' %}
-            <div class="certificate-details">
-              <div class="cert-field">
-                <span class="cert-field-label">Common Name</span>
-                <span class="cert-field-value">{{ r.subject_cn or "—" }}</span>
-              </div>
-              <div class="cert-field">
-                <span class="cert-field-label">Issuer</span>
-                <span class="cert-field-value muted">{{ r.issuer or "—" }}</span>
-              </div>
-              <div class="cert-field">
-                <span class="cert-field-label">Истекает</span>
-                <span class="cert-field-value">{{ r.not_valid_after.strftime('%d.%m.%Y %H:%M UTC') if r.not_valid_after else "—" }}</span>
-              </div>
-              <div class="cert-field">
-                <span class="cert-field-label">Дней осталось</span>
-                <span class="cert-field-value
-                  {% if r.days_left is not none %}
-                    {% if r.days_left < 0 %}days-crit
-                    {% elif r.days_left <= 14 %}days-crit
-                    {% elif r.days_left <= 30 %}days-warn
-                    {% else %}days-ok{% endif %}
-                  {% endif %}">
-                  {{ r.days_left if r.days_left is not none else "—" }}
-                </span>
-              </div>
-              <div class="cert-field">
-                <span class="cert-field-label">Ответственный</span>
-                <span class="owner-field">
-                  <span class="cert-field-value">{{ r.owner or "Не назначен" }}</span>
-                </span>
-              </div>
-            </div>
-            {% else %}
-            <div class="cert-error-msg">{{ r.error or "Соединение не установлено" }}</div>
-            {% endif %}
+        <!-- Stats -->
+        <section class="stats" aria-label="Состояние проекта">
+          <article class="stat-card">
+            <span class="stat-label">Сервисов проверено</span>
+            <strong id="stat-total">{{ results | length }}</strong>
           </article>
-          {% endfor %}
-        </div>
-      </section>
+          <article class="stat-card">
+            <span class="stat-label">Проблем найдено</span>
+            <strong id="stat-problems">{{ results | selectattr('status', 'ne', 'OK') | list | length }}</strong>
+          </article>
+          <article class="stat-card">
+            <span class="stat-label">Статус</span>
+            <strong class="status" id="stat-status">{{ "Проверка выполнена" if results or error else "Готово к проверке" }}</strong>
+          </article>
+        </section>
 
-    </main>
+        <!-- Scan Form -->
+        <section class="panel intro-panel">
+          <h2>Новое сканирование</h2>
+          <form id="scan-form" class="check-form">
+            <label for="target">Адреса — по одному на строке (URL, IP, CIDR)</label>
+            <div class="form-row">
+              <textarea id="target" name="target"
+                placeholder="google.com&#10;expired.badssl.com&#10;192.168.1.0/30"
+                required>{{ targets }}</textarea>
+              <button id="submit-btn" class="button" type="submit">Проверить</button>
+            </div>
+          </form>
+        </section>
+
+        <!-- Error banner -->
+        {% if error %}
+        <section class="error-panel" role="alert">
+          <h2>Не удалось выполнить проверку</h2>
+          <p>{{ error }}</p>
+        </section>
+        {% endif %}
+
+        <div id="dashboard-error" class="dashboard-error" hidden></div>
+
+        <!-- Toolbar -->
+        <div class="dashboard-toolbar" aria-label="Фильтры реестра">
+          <input id="registry-search" class="search-input" type="search" placeholder="Поиск по Host, CN или Issuer" />
+          <select id="status-filter" class="status-filter" aria-label="Фильтр по статусу">
+            <option value="ALL">Все статусы</option>
+            <option value="OK">OK</option>
+            <option value="Information">Information</option>
+            <option value="Warning">Warning</option>
+            <option value="Critical">Critical</option>
+            <option value="Expired">Expired</option>
+            <option value="Error">Error</option>
+          </select>
+          <input id="csv-filename" class="csv-filename-input" type="text"
+            value="certificate-radar" maxlength="100" aria-label="Название CSV-файла"
+            placeholder="Название CSV" />
+          <button id="export-csv" class="secondary-button" type="button" data-export-csv
+            title="Скачать записи, соответствующие текущим фильтрам">Скачать CSV</button>
+        </div>
+
+        <!-- Results -->
+        <section id="results-panel" class="panel result-panel" {% if not results %}hidden{% endif %}>
+          <p class="eyebrow">Результаты проверки</p>
+          <div id="certificate-list" class="certificate-list">
+            {% for r in results %}
+            <article class="certificate-card status-{{ r.status | lower }}">
+              <div class="certificate-card-header">
+                <span class="cert-host">{{ r.target }}</span>
+                <div class="certificate-card-header-actions">
+                  {% if r.is_self_signed %}<span class="problem-badge">Self-Signed</span>{% endif %}
+                  {% if r.hostname_mismatch %}<span class="problem-badge">Mismatch</span>{% endif %}
+                  {% if r.untrusted_chain %}<span class="problem-badge">Untrusted</span>{% endif %}
+                  {% if r.weak_signature %}<span class="problem-badge">Weak Sig</span>{% endif %}
+                  {% if r.weak_key %}<span class="problem-badge">Weak Key</span>{% endif %}
+                  <span class="risk-badge risk-{{ r.risk_level | lower }}">{{ r.risk_score }}/100 · {{ r.risk_level }}</span>
+                  <span class="badge badge-{{ r.status | lower }}">{{ r.status }}</span>
+                </div>
+              </div>
+              {% if r.status != 'Error' %}
+              <div class="certificate-details">
+                <div class="cert-field">
+                  <span class="cert-field-label">Common Name</span>
+                  <span class="cert-field-value">{{ r.subject_cn or "—" }}</span>
+                </div>
+                <div class="cert-field">
+                  <span class="cert-field-label">Issuer</span>
+                  <span class="cert-field-value muted">{{ r.issuer or "—" }}</span>
+                </div>
+                <div class="cert-field">
+                  <span class="cert-field-label">Истекает</span>
+                  <span class="cert-field-value">{{ r.not_valid_after.strftime('%d.%m.%Y') if r.not_valid_after else "—" }}</span>
+                </div>
+                <div class="cert-field">
+                  <span class="cert-field-label">Дней осталось</span>
+                  <span class="cert-field-value
+                    {% if r.days_left is not none %}
+                      {% if r.days_left <= 14 %}days-crit
+                      {% elif r.days_left <= 30 %}days-warn
+                      {% else %}days-ok{% endif %}
+                    {% endif %}">
+                    {{ r.days_left if r.days_left is not none else "—" }}
+                  </span>
+                </div>
+                <div class="cert-field">
+                  <span class="cert-field-label">Ответственный</span>
+                  <span class="owner-field">
+                    <span class="cert-field-value">{{ r.owner or "Не назначен" }}</span>
+                  </span>
+                </div>
+              </div>
+              {% else %}
+              <div class="cert-error-msg">{{ r.error or "Соединение не установлено" }}</div>
+              {% endif %}
+            </article>
+            {% endfor %}
+          </div>
+        </section>
+
+      </div><!-- /page-content -->
+    </div><!-- /app-main -->
+
     <div id="toast-container" class="toast-container" aria-live="polite"></div>
 
     <script>
-      const scanForm = document.getElementById("scan-form");
-      const submitBtn = document.getElementById("submit-btn");
-      const resultsPanel = document.getElementById("results-panel");
-      const certList = document.getElementById("certificate-list");
-      const statTotal = document.getElementById("stat-total");
-      const statProblems = document.getElementById("stat-problems");
-      const statStatus = document.getElementById("stat-status");
-      const searchInput = document.getElementById("registry-search");
-      const statusFilter = document.getElementById("status-filter");
-      const errorBox = document.getElementById("dashboard-error");
-      const schedulerBadge = document.getElementById("scheduler-badge");
-      const toastContainer = document.getElementById("toast-container");
+      const scanForm      = document.getElementById("scan-form");
+      const submitBtn     = document.getElementById("submit-btn");
+      const resultsPanel  = document.getElementById("results-panel");
+      const certList      = document.getElementById("certificate-list");
+      const statTotal     = document.getElementById("stat-total");
+      const statProblems  = document.getElementById("stat-problems");
+      const statStatus    = document.getElementById("stat-status");
+      const searchInput   = document.getElementById("registry-search");
+      const statusFilter  = document.getElementById("status-filter");
+      const csvFilename   = document.getElementById("csv-filename");
+      const errorBox      = document.getElementById("dashboard-error");
+      const schedulerBadge= document.getElementById("scheduler-badge");
+      const toastContainer= document.getElementById("toast-container");
 
       let certificates = [];
-      let nextScanAt = null;
+      let nextScanAt   = null;
 
-      const esc = (value) => String(value ?? "—")
-        .replaceAll("&", "&amp;")
-        .replaceAll("<", "&lt;")
-        .replaceAll(">", "&gt;")
-        .replaceAll('"', "&quot;")
-        .replaceAll("'", "&#039;");
+      const esc = (v) => String(v ?? "—")
+        .replaceAll("&","&amp;").replaceAll("<","&lt;")
+        .replaceAll(">","&gt;").replaceAll('"',"&quot;").replaceAll("'","&#039;");
 
-      const fmtDate = (value) => value
-        ? new Date(value).toLocaleString("ru-RU", { timeZone: "UTC" }) + " UTC"
+      const fmtDate = (v) => v
+        ? new Date(v).toLocaleDateString("ru-RU", { timeZone:"UTC" })
         : "—";
 
-      const daysClass = (days) => {
-        if (days == null) return "";
-        if (days <= 14) return "days-crit";
-        if (days <= 30) return "days-warn";
+      const daysClass = (d) => {
+        if (d == null) return "";
+        if (d <= 14) return "days-crit";
+        if (d <= 30) return "days-warn";
         return "days-ok";
       };
 
-      const showError = (message) => {
-        errorBox.textContent = message;
-        errorBox.hidden = false;
+      const showError  = (m) => { errorBox.textContent = m; errorBox.hidden = false; };
+      const clearError = ()  => { errorBox.hidden = true; errorBox.textContent = ""; };
+
+      const showToast = (cert) => {
+        const t = document.createElement("div");
+        t.className = "toast";
+        t.innerHTML = `<strong>Высокий риск: ${esc(cert.host)}</strong><span>Статус ${esc(cert.status)}, Risk Score ${esc(cert.risk_score)}/100</span>`;
+        toastContainer.appendChild(t);
+        setTimeout(() => t.remove(), 7000);
       };
 
-      const clearError = () => {
-        errorBox.hidden = true;
-        errorBox.textContent = "";
-      };
-
-      const showToast = (certificate) => {
-        const toast = document.createElement("div");
-        toast.className = "toast";
-        toast.innerHTML = `<strong>Высокий риск: ${esc(certificate.host)}</strong><span>Статус ${esc(certificate.status)}, Risk Score ${esc(certificate.risk_score)}/100</span>`;
-        toastContainer.appendChild(toast);
-        setTimeout(() => toast.remove(), 7000);
-      };
-
-      const notifyRiskChanges = (items, previousById) => {
+      const notifyRiskChanges = (items, prevMap) => {
         items.forEach((item) => {
-          const previous = previousById.get(item.id);
-          const newScan = !previous || previous.last_scanned_at !== item.last_scanned_at;
-          const criticalStatus = ["Critical", "Expired"].includes(item.status)
-            && previous?.status !== item.status;
-          if (criticalStatus || (newScan && item.risk_score > 80)) showToast(item);
+          const prev = prevMap.get(item.id);
+          const newScan = !prev || prev.last_scanned_at !== item.last_scanned_at;
+          const crit = ["Critical","Expired"].includes(item.status) && prev?.status !== item.status;
+          if (crit || (newScan && item.risk_score > 80)) showToast(item);
         });
       };
 
       const updateSchedulerBadge = () => {
         if (!nextScanAt) return;
-        const remaining = new Date(nextScanAt).getTime() - Date.now();
-        if (remaining <= 0) {
-          schedulerBadge.textContent = "Автосканирование выполняется…";
-          return;
-        }
-        const totalMinutes = Math.ceil(remaining / 60000);
-        const hours = Math.floor(totalMinutes / 60);
-        const minutes = totalMinutes % 60;
-        schedulerBadge.textContent = `Следующее автосканирование: через ${hours} ч ${minutes} мин`;
-        schedulerBadge.title = fmtDate(nextScanAt);
+        const rem = new Date(nextScanAt).getTime() - Date.now();
+        if (rem <= 0) { schedulerBadge.textContent = "Сканирование…"; return; }
+        const totalMin = Math.ceil(rem / 60000);
+        const h = Math.floor(totalMin / 60), m = totalMin % 60;
+        schedulerBadge.textContent = `Следующее сканирование: ${h}ч ${m}м`;
       };
 
       const loadSchedulerStatus = async () => {
-        const response = await fetch("/api/scheduler/status");
-        const payload = await response.json();
-        if (!response.ok) throw new Error(payload.detail || "Не удалось загрузить статус планировщика");
+        const res = await fetch("/api/scheduler/status");
+        const payload = await res.json();
+        if (!res.ok) throw new Error(payload.detail || "Не удалось загрузить статус");
         nextScanAt = payload.next_scan_at;
         updateSchedulerBadge();
       };
 
-      const issueBadges = (certificate) => [
-        certificate.is_self_signed ? '<span class="problem-badge">Self-Signed</span>' : "",
-        certificate.hostname_mismatch ? '<span class="problem-badge">Mismatch</span>' : "",
-        certificate.untrusted_chain ? '<span class="problem-badge">Untrusted</span>' : "",
-        certificate.weak_signature ? '<span class="problem-badge">Weak Signature</span>' : "",
-        certificate.weak_key ? '<span class="problem-badge">Weak Key</span>' : "",
+      const issueBadges = (cert) => [
+        cert.is_self_signed     ? '<span class="problem-badge">Self-Signed</span>' : "",
+        cert.hostname_mismatch  ? '<span class="problem-badge">Mismatch</span>' : "",
+        cert.untrusted_chain    ? '<span class="problem-badge">Untrusted</span>' : "",
+        cert.weak_signature     ? '<span class="problem-badge">Weak Sig</span>' : "",
+        cert.weak_key           ? '<span class="problem-badge">Weak Key</span>' : "",
       ].join("");
 
-      const renderList = (items, emptyText) => {
-        const values = Array.isArray(items) ? items : [];
-        return values.length
-          ? `<ul>${values.map(item => `<li>${esc(item)}</li>`).join("")}</ul>`
-          : `<ul><li>${esc(emptyText)}</li></ul>`;
-      };
+      const renderList = (items, empty) =>
+        Array.isArray(items) && items.length
+          ? `<ul>${items.map(i => `<li>${esc(i)}</li>`).join("")}</ul>`
+          : `<ul><li>${esc(empty)}</li></ul>`;
 
-      const renderCard = (certificate) => {
-        const statusSlug = esc(certificate.status).toLowerCase();
-        const owner = certificate.owner || "Не назначен";
-        const details = certificate.status === "Error"
-          ? `<div class="cert-error-msg">${esc(certificate.error || "Соединение не установлено")}</div>`
+      const renderCard = (cert) => {
+        const slug  = esc(cert.status).toLowerCase();
+        const owner = cert.owner || "Не назначен";
+        const rl    = esc(cert.risk_level || "Low").toLowerCase();
+        const rid   = `risk-details-${cert.id}`;
+
+        const details = cert.status === "Error"
+          ? `<div class="cert-error-msg">${esc(cert.error || "Соединение не установлено")}</div>`
           : `<div class="certificate-details">
-              <div class="cert-field"><span class="cert-field-label">Common Name</span><span class="cert-field-value">${esc(certificate.cn)}</span></div>
-              <div class="cert-field"><span class="cert-field-label">Issuer</span><span class="cert-field-value muted">${esc(certificate.issuer)}</span></div>
-              <div class="cert-field"><span class="cert-field-label">Истекает</span><span class="cert-field-value">${esc(fmtDate(certificate.not_after))}</span></div>
-              <div class="cert-field"><span class="cert-field-label">Дней осталось</span><span class="cert-field-value ${daysClass(certificate.days_left)}">${esc(certificate.days_left)}</span></div>
-              <div class="cert-field"><span class="cert-field-label">Ответственный</span><span class="owner-field"><span class="cert-field-value">${esc(owner)}</span><button class="owner-edit" type="button" data-owner-id="${certificate.id}" data-owner="${esc(certificate.owner || "")}" aria-label="Изменить ответственного">✎</button></span></div>
-              <div class="cert-field"><span class="cert-field-label">Последняя проверка</span><span class="cert-field-value muted">${esc(fmtDate(certificate.last_scanned_at))}</span></div>
+              <div class="cert-field"><span class="cert-field-label">Common Name</span><span class="cert-field-value">${esc(cert.cn)}</span></div>
+              <div class="cert-field"><span class="cert-field-label">Issuer</span><span class="cert-field-value muted">${esc(cert.issuer)}</span></div>
+              <div class="cert-field"><span class="cert-field-label">Истекает</span><span class="cert-field-value">${fmtDate(cert.not_after)}</span></div>
+              <div class="cert-field"><span class="cert-field-label">Дней осталось</span><span class="cert-field-value ${daysClass(cert.days_left)}">${esc(cert.days_left)}</span></div>
+              <div class="cert-field"><span class="cert-field-label">Ответственный</span><span class="owner-field"><span class="cert-field-value">${esc(owner)}</span><button class="owner-edit" type="button" data-owner-id="${cert.id}" data-owner="${esc(cert.owner||"")}" aria-label="Изменить">✎</button></span></div>
+              <div class="cert-field"><span class="cert-field-label">Проверка</span><span class="cert-field-value muted">${fmtDate(cert.last_scanned_at)}</span></div>
             </div>`;
 
-        const riskLevel = esc(certificate.risk_level || "Low").toLowerCase();
-        const riskDetailsId = `risk-details-${certificate.id}`;
-        return `<article class="certificate-card status-${statusSlug}">
+        return `<article class="certificate-card status-${slug}">
           <div class="certificate-card-header">
-            <span class="cert-host">${esc(certificate.host)}:${esc(certificate.port)}</span>
+            <span class="cert-host">${esc(cert.host)}<span class="port">:${esc(cert.port)}</span></span>
             <div class="certificate-card-header-actions">
-              ${issueBadges(certificate)}
-              <span class="risk-badge risk-${riskLevel}">${esc(certificate.risk_score ?? 0)}/100 · ${esc(certificate.risk_level || "Low")}</span>
-              <span class="badge badge-${statusSlug}">${esc(certificate.status)}</span>
-              <button class="details-button" type="button" data-details-id="${riskDetailsId}" aria-expanded="false">Детали</button>
+              ${issueBadges(cert)}
+              <span class="risk-badge risk-${rl}">${esc(cert.risk_score ?? 0)}/100 · ${esc(cert.risk_level || "Low")}</span>
+              <span class="badge badge-${slug}">${esc(cert.status)}</span>
+              <button class="details-button" type="button" data-details-id="${rid}" aria-expanded="false">Детали</button>
             </div>
           </div>
           ${details}
-          <div id="${riskDetailsId}" class="risk-details" hidden>
+          <div id="${rid}" class="risk-details" hidden>
             <div class="risk-details-grid">
-              <div><h3>Причины риска</h3>${renderList(certificate.risk_reasons, "Нарушения не обнаружены")}</div>
-              <div><h3>Рекомендации</h3>${renderList(certificate.recommendations, "Дополнительные действия не требуются")}</div>
+              <div><h3>Причины риска</h3>${renderList(cert.risk_reasons,"Нарушения не обнаружены")}</div>
+              <div><h3>Рекомендации</h3>${renderList(cert.recommendations,"Дополнительные действия не требуются")}</div>
             </div>
           </div>
         </article>`;
       };
 
       const updateStats = () => {
-        statTotal.textContent = certificates.length;
-        statProblems.textContent = certificates.filter(item =>
-          item.status !== "OK" || item.risk_score > 20
-        ).length;
+        statTotal.textContent    = certificates.length;
+        statProblems.textContent = certificates.filter(c => c.status !== "OK" || c.risk_score > 20).length;
       };
 
       const applyFilters = () => {
-        const query = searchInput.value.trim().toLowerCase();
-        const status = statusFilter.value;
-        const filtered = certificates.filter((certificate) => {
-          const matchesStatus = status === "ALL" || certificate.status === status;
-          const haystack = `${certificate.host} ${certificate.cn || ""} ${certificate.issuer || ""}`.toLowerCase();
-          return matchesStatus && (!query || haystack.includes(query));
+        const q  = searchInput.value.trim().toLowerCase();
+        const st = statusFilter.value;
+        const filtered = certificates.filter(c => {
+          const matchSt = st === "ALL" || c.status === st;
+          const hay = `${c.host} ${c.cn||""} ${c.issuer||""}`.toLowerCase();
+          return matchSt && (!q || hay.includes(q));
         });
-
         resultsPanel.hidden = false;
         certList.innerHTML = filtered.length
           ? filtered.map(renderCard).join("")
           : '<div class="empty-state">Сертификаты не найдены</div>';
       };
 
+      const exportFilteredCsv = () => {
+        const params = new URLSearchParams();
+        const search = searchInput.value.trim();
+        const status = statusFilter.value;
+        const filename = csvFilename.value.trim() || "certificate-radar";
+        if (search) params.set("search", search);
+        if (status !== "ALL") params.set("status", status);
+        params.set("filename", filename);
+        window.location.assign(`/api/export/csv?${params.toString()}`);
+      };
+
       const loadCertificates = async (notify = false) => {
         clearError();
-        const response = await fetch("/api/certificates");
-        const payload = await response.json();
-        if (!response.ok) throw new Error(payload.detail || "Не удалось загрузить реестр");
-        const previousById = new Map(certificates.map(item => [item.id, item]));
-        if (notify) notifyRiskChanges(payload, previousById);
+        const res = await fetch("/api/certificates");
+        const payload = await res.json();
+        if (!res.ok) throw new Error(payload.detail || "Не удалось загрузить реестр");
+        const prevMap = new Map(certificates.map(c => [c.id, c]));
+        if (notify) notifyRiskChanges(payload, prevMap);
         certificates = payload;
         updateStats();
         applyFilters();
@@ -346,18 +393,17 @@
       };
 
       const mergeCertificates = (items) => {
-        const byId = new Map(certificates.map(item => [item.id, item]));
-        items.forEach(item => byId.set(item.id, item));
-        certificates = Array.from(byId.values()).sort((a, b) =>
-          new Date(b.last_scanned_at) - new Date(a.last_scanned_at)
-        );
+        const byId = new Map(certificates.map(c => [c.id, c]));
+        items.forEach(c => byId.set(c.id, c));
+        certificates = Array.from(byId.values()).sort((a,b) =>
+          new Date(b.last_scanned_at) - new Date(a.last_scanned_at));
       };
 
-      scanForm.addEventListener("submit", async (event) => {
-        event.preventDefault();
+      scanForm.addEventListener("submit", async (e) => {
+        e.preventDefault();
         clearError();
         const targets = document.getElementById("target").value
-          .split("\n").map(value => value.trim()).filter(Boolean);
+          .split("\n").map(v => v.trim()).filter(Boolean);
         if (!targets.length) return;
 
         submitBtn.disabled = true;
@@ -365,21 +411,21 @@
         statStatus.textContent = "Сканирование…";
 
         try {
-          const response = await fetch("/api/scan", {
+          const res = await fetch("/api/scan", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ targets }),
           });
-          const payload = await response.json();
-          if (!response.ok) throw new Error(payload.detail || "Ошибка сканирования");
-          const previousById = new Map(certificates.map(item => [item.id, item]));
-          notifyRiskChanges(payload, previousById);
+          const payload = await res.json();
+          if (!res.ok) throw new Error(payload.detail || "Ошибка сканирования");
+          const prevMap = new Map(certificates.map(c => [c.id, c]));
+          notifyRiskChanges(payload, prevMap);
           mergeCertificates(payload);
           updateStats();
           applyFilters();
           statStatus.textContent = "Проверка выполнена";
-        } catch (error) {
-          showError(error.message);
+        } catch (err) {
+          showError(err.message);
           statStatus.textContent = "Ошибка";
         } finally {
           submitBtn.disabled = false;
@@ -387,52 +433,54 @@
         }
       });
 
-      certList.addEventListener("click", async (event) => {
-        const detailsButton = event.target.closest("[data-details-id]");
-        if (detailsButton) {
-          const details = document.getElementById(detailsButton.dataset.detailsId);
-          const opening = details.hidden;
-          details.hidden = !opening;
-          detailsButton.setAttribute("aria-expanded", String(opening));
-          detailsButton.textContent = opening ? "Скрыть" : "Детали";
+      certList.addEventListener("click", async (e) => {
+        const detBtn = e.target.closest("[data-details-id]");
+        if (detBtn) {
+          const det = document.getElementById(detBtn.dataset.detailsId);
+          const opening = det.hidden;
+          det.hidden = !opening;
+          detBtn.setAttribute("aria-expanded", String(opening));
+          detBtn.textContent = opening ? "Скрыть" : "Детали";
           return;
         }
-
-        const button = event.target.closest("[data-owner-id]");
-        if (!button) return;
-        const currentOwner = button.dataset.owner || "";
-        const owner = prompt("Введите имя ответственного. Оставьте пустым, чтобы удалить.", currentOwner);
+        const ownerBtn = e.target.closest("[data-owner-id]");
+        if (!ownerBtn) return;
+        const current = ownerBtn.dataset.owner || "";
+        const owner = prompt("Введите имя ответственного:", current);
         if (owner === null) return;
-
         try {
           clearError();
-          const response = await fetch(`/api/certificates/${button.dataset.ownerId}/owner`, {
+          const res = await fetch(`/api/certificates/${ownerBtn.dataset.ownerId}/owner`, {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ owner }),
           });
-          const payload = await response.json();
-          if (!response.ok) throw new Error(payload.detail || "Не удалось изменить ответственного");
+          const payload = await res.json();
+          if (!res.ok) throw new Error(payload.detail || "Не удалось изменить");
           mergeCertificates([payload]);
           applyFilters();
-        } catch (error) {
-          showError(error.message);
-        }
+        } catch (err) { showError(err.message); }
       });
 
       searchInput.addEventListener("input", applyFilters);
       statusFilter.addEventListener("change", applyFilters);
+      document.querySelectorAll("[data-export-csv]").forEach(link => {
+        link.addEventListener("click", (event) => {
+          event.preventDefault();
+          exportFilteredCsv();
+        });
+      });
 
       document.addEventListener("DOMContentLoaded", () => {
-        loadCertificates().catch(error => {
-          showError(error.message);
+        loadCertificates().catch(err => {
+          showError(err.message);
           statStatus.textContent = "Ошибка загрузки";
         });
-        loadSchedulerStatus().catch(error => showError(error.message));
+        loadSchedulerStatus().catch(err => showError(err.message));
         setInterval(updateSchedulerBadge, 30000);
         setInterval(() => {
-          loadCertificates(true).catch(error => showError(error.message));
-          loadSchedulerStatus().catch(error => showError(error.message));
+          loadCertificates(true).catch(err => showError(err.message));
+          loadSchedulerStatus().catch(err => showError(err.message));
         }, 60000);
       });
     </script>
