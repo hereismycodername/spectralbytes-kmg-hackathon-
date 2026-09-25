@@ -31,6 +31,12 @@
       .risk-details-grid { display:grid; grid-template-columns:1fr 1fr; gap:22px; }
       .risk-details h3 { margin:0 0 8px; font-size:.82rem; color:var(--text-primary); }
       .risk-details ul { margin:0; padding-left:20px; color:var(--text-secondary); font-size:.82rem; line-height:1.6; }
+      .scheduler-badge { display:inline-flex; margin-top:14px; border:1px solid var(--border); border-radius:999px; padding:7px 12px; background:var(--bg-3); color:var(--text-secondary); font-size:.76rem; font-weight:700; }
+      .toast-container { position:fixed; top:20px; right:20px; z-index:1000; display:grid; gap:10px; width:min(380px,calc(100vw - 40px)); }
+      .toast { padding:14px 16px; border:1px solid var(--crit-border); border-radius:12px; background:var(--bg-2); color:var(--text-primary); box-shadow:0 16px 40px rgba(0,0,0,.32); animation:toast-in .2s ease-out; }
+      .toast strong { display:block; margin-bottom:4px; color:var(--crit-color); }
+      .toast span { color:var(--text-secondary); font-size:.82rem; }
+      @keyframes toast-in { from { opacity:0; transform:translateY(-8px); } }
       .empty-state { padding:26px; border:1px dashed var(--border); border-radius:12px; color:var(--text-secondary); text-align:center; }
       .dashboard-error { margin-bottom:16px; padding:12px 16px; border:1px solid var(--crit-border); border-radius:10px; background:var(--crit-bg); color:var(--crit-color); }
       @media (max-width:760px) { .dashboard-toolbar,.risk-details-grid { grid-template-columns:1fr; } .secondary-button { min-height:44px; } }
@@ -46,6 +52,7 @@
         <p class="subtitle">
           Автоматическое обнаружение, инвентаризация и мониторинг TLS/SSL-сертификатов корпоративной инфраструктуры.
         </p>
+        <span id="scheduler-badge" class="scheduler-badge">Автосканирование: загрузка…</span>
       </header>
 
       <!-- ── Stats ── -->
@@ -165,6 +172,7 @@
       </section>
 
     </main>
+    <div id="toast-container" class="toast-container" aria-live="polite"></div>
 
     <script>
       const scanForm = document.getElementById("scan-form");
@@ -177,8 +185,11 @@
       const searchInput = document.getElementById("registry-search");
       const statusFilter = document.getElementById("status-filter");
       const errorBox = document.getElementById("dashboard-error");
+      const schedulerBadge = document.getElementById("scheduler-badge");
+      const toastContainer = document.getElementById("toast-container");
 
       let certificates = [];
+      let nextScanAt = null;
 
       const esc = (value) => String(value ?? "—")
         .replaceAll("&", "&amp;")
@@ -206,6 +217,46 @@
       const clearError = () => {
         errorBox.hidden = true;
         errorBox.textContent = "";
+      };
+
+      const showToast = (certificate) => {
+        const toast = document.createElement("div");
+        toast.className = "toast";
+        toast.innerHTML = `<strong>Высокий риск: ${esc(certificate.host)}</strong><span>Статус ${esc(certificate.status)}, Risk Score ${esc(certificate.risk_score)}/100</span>`;
+        toastContainer.appendChild(toast);
+        setTimeout(() => toast.remove(), 7000);
+      };
+
+      const notifyRiskChanges = (items, previousById) => {
+        items.forEach((item) => {
+          const previous = previousById.get(item.id);
+          const newScan = !previous || previous.last_scanned_at !== item.last_scanned_at;
+          const criticalStatus = ["Critical", "Expired"].includes(item.status)
+            && previous?.status !== item.status;
+          if (criticalStatus || (newScan && item.risk_score > 80)) showToast(item);
+        });
+      };
+
+      const updateSchedulerBadge = () => {
+        if (!nextScanAt) return;
+        const remaining = new Date(nextScanAt).getTime() - Date.now();
+        if (remaining <= 0) {
+          schedulerBadge.textContent = "Автосканирование выполняется…";
+          return;
+        }
+        const totalMinutes = Math.ceil(remaining / 60000);
+        const hours = Math.floor(totalMinutes / 60);
+        const minutes = totalMinutes % 60;
+        schedulerBadge.textContent = `Следующее автосканирование: через ${hours} ч ${minutes} мин`;
+        schedulerBadge.title = fmtDate(nextScanAt);
+      };
+
+      const loadSchedulerStatus = async () => {
+        const response = await fetch("/api/scheduler/status");
+        const payload = await response.json();
+        if (!response.ok) throw new Error(payload.detail || "Не удалось загрузить статус планировщика");
+        nextScanAt = payload.next_scan_at;
+        updateSchedulerBadge();
       };
 
       const issueBadges = (certificate) => [
@@ -281,11 +332,13 @@
           : '<div class="empty-state">Сертификаты не найдены</div>';
       };
 
-      const loadCertificates = async () => {
+      const loadCertificates = async (notify = false) => {
         clearError();
         const response = await fetch("/api/certificates");
         const payload = await response.json();
         if (!response.ok) throw new Error(payload.detail || "Не удалось загрузить реестр");
+        const previousById = new Map(certificates.map(item => [item.id, item]));
+        if (notify) notifyRiskChanges(payload, previousById);
         certificates = payload;
         updateStats();
         applyFilters();
@@ -319,6 +372,8 @@
           });
           const payload = await response.json();
           if (!response.ok) throw new Error(payload.detail || "Ошибка сканирования");
+          const previousById = new Map(certificates.map(item => [item.id, item]));
+          notifyRiskChanges(payload, previousById);
           mergeCertificates(payload);
           updateStats();
           applyFilters();
@@ -373,6 +428,12 @@
           showError(error.message);
           statStatus.textContent = "Ошибка загрузки";
         });
+        loadSchedulerStatus().catch(error => showError(error.message));
+        setInterval(updateSchedulerBadge, 30000);
+        setInterval(() => {
+          loadCertificates(true).catch(error => showError(error.message));
+          loadSchedulerStatus().catch(error => showError(error.message));
+        }, 60000);
       });
     </script>
   </body>

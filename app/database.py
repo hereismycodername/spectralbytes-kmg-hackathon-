@@ -2,9 +2,21 @@ from __future__ import annotations
 
 from collections.abc import AsyncGenerator
 from datetime import datetime, timezone
+import os
 from pathlib import Path
 
-from sqlalchemy import JSON, Boolean, DateTime, Integer, String, Text, UniqueConstraint, select, text
+from sqlalchemy import (
+    JSON,
+    Boolean,
+    DateTime,
+    ForeignKey,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+    select,
+    text,
+)
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
     AsyncSession,
@@ -19,7 +31,10 @@ from app.certificate_checker import build_risk_assessment, status_from_days
 BASE_DIR = Path(__file__).resolve().parent.parent
 DATA_DIR = BASE_DIR / "data"
 DATA_DIR.mkdir(parents=True, exist_ok=True)
-DATABASE_URL = f"sqlite+aiosqlite:///{DATA_DIR / 'radar.db'}"
+DATABASE_URL = os.getenv(
+    "DATABASE_URL",
+    f"sqlite+aiosqlite:///{DATA_DIR / 'radar.db'}",
+)
 
 
 class Base(DeclarativeBase):
@@ -53,6 +68,19 @@ class Certificate(Base):
     recommendations: Mapped[list[str]] = mapped_column(JSON, default=list)
     owner: Mapped[str | None] = mapped_column(String(255), nullable=True, default=None)
     last_scanned_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
+class CertificateHistory(Base):
+    __tablename__ = "certificate_history"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    certificate_id: Mapped[int] = mapped_column(
+        ForeignKey("certificates.id"), index=True, nullable=False
+    )
+    scanned_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    risk_score: Mapped[int] = mapped_column(Integer, nullable=False)
+    days_left: Mapped[int] = mapped_column(Integer, nullable=False)
+    status: Mapped[str] = mapped_column(String(32), nullable=False)
 
 
 engine: AsyncEngine = create_async_engine(DATABASE_URL, future=True)
@@ -193,5 +221,16 @@ async def upsert_certificate(session: AsyncSession, result) -> Certificate:
     certificate.risk_level = assessment["risk_level"]
     certificate.risk_reasons = assessment["risk_reasons"]
     certificate.recommendations = assessment["recommendations"]
+
+    await session.flush()
+    session.add(
+        CertificateHistory(
+            certificate_id=certificate.id,
+            scanned_at=certificate.last_scanned_at,
+            risk_score=certificate.risk_score,
+            days_left=result.days_left if result.days_left is not None else 0,
+            status=certificate.status,
+        )
+    )
 
     return certificate

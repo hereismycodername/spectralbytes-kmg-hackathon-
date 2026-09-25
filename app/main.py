@@ -14,22 +14,35 @@ from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.certificate_checker import TargetResult, build_risk_assessment, scan_targets
-from app.database import Certificate, get_session, init_db, upsert_certificate
+from app.database import (
+    Certificate,
+    CertificateHistory,
+    get_session,
+    init_db,
+    upsert_certificate,
+)
+from app.scheduler import CertificateScheduler, scan_lock
 
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 
 @asynccontextmanager
-async def lifespan(_: FastAPI):
+async def lifespan(application: FastAPI):
     await init_db()
-    yield
+    scheduler = CertificateScheduler(application)
+    application.state.scheduler = scheduler
+    scheduler.start()
+    try:
+        yield
+    finally:
+        await scheduler.stop()
 
 
 app = FastAPI(
     title="Certificate Radar",
     description="Мониторинг TLS/SSL-сертификатов корпоративной инфраструктуры.",
-    version="0.3.0",
+    version="0.4.0",
     lifespan=lifespan,
 )
 
@@ -73,6 +86,14 @@ class CertificateRead(BaseModel):
     last_scanned_at: datetime
 
 
+class CertificateHistoryRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    scanned_at: datetime
+    risk_score: int
+    days_left: int
+
+
 async def save_results(
     session: AsyncSession,
     results: list[TargetResult],
@@ -99,10 +120,11 @@ async def api_scan(
     session: AsyncSession = Depends(get_session),
 ):
     try:
-        results = await scan_targets(payload.targets)
+        async with scan_lock:
+            results = await scan_targets(payload.targets)
+            return await save_results(session, results)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
-    return await save_results(session, results)
 
 
 @app.get("/api/certificates", response_model=list[CertificateRead])
@@ -126,6 +148,35 @@ async def api_certificates(
         )
 
     return list((await session.execute(query)).scalars().all())
+
+
+@app.get(
+    "/api/certificates/{cert_id}/history",
+    response_model=list[CertificateHistoryRead],
+)
+async def certificate_history(
+    cert_id: int,
+    session: AsyncSession = Depends(get_session),
+):
+    if await session.get(Certificate, cert_id) is None:
+        raise HTTPException(status_code=404, detail="Сертификат не найден")
+
+    query = (
+        select(CertificateHistory)
+        .where(CertificateHistory.certificate_id == cert_id)
+        .order_by(CertificateHistory.scanned_at.asc())
+    )
+    return list((await session.execute(query)).scalars().all())
+
+
+@app.get("/api/scheduler/status")
+async def scheduler_status(request: Request):
+    scheduler: CertificateScheduler = request.app.state.scheduler
+    interval = scheduler.interval_hours
+    return {
+        "next_scan_at": request.app.state.next_scan_at.isoformat(),
+        "interval_hours": int(interval) if interval.is_integer() else interval,
+    }
 
 
 @app.patch(
