@@ -3,83 +3,377 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="Certificate Radar — мониторинг TLS/SSL-сертификатов корпоративной инфраструктуры" />
     <title>{{ title }}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="stylesheet" href="{{ url_for('static', path='/style.css') }}" />
+    <style>
+      .dashboard-toolbar { display:grid; grid-template-columns:1fr 190px auto; gap:10px; margin:16px 0; }
+      .search-input,.status-filter { min-width:0; border:1px solid var(--border); border-radius:10px; padding:11px 13px; background:var(--bg-3); color:var(--text-primary); font:inherit; }
+      .search-input:focus,.status-filter:focus { outline:none; border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-glow); }
+      .secondary-button { display:inline-flex; align-items:center; justify-content:center; border:1px solid var(--border); border-radius:10px; padding:0 16px; color:var(--text-primary); background:var(--bg-3); font-size:.85rem; font-weight:700; text-decoration:none; }
+      .secondary-button:hover { border-color:var(--accent); }
+      .certificate-card-header-actions { display:flex; align-items:center; flex-wrap:wrap; justify-content:flex-end; gap:8px; }
+      .problem-badge { display:inline-flex; border-radius:999px; padding:4px 9px; color:var(--warn-color); background:var(--warn-bg); border:1px solid var(--warn-border); font-size:.68rem; font-weight:800; text-transform:uppercase; }
+      .owner-field { display:flex; align-items:center; gap:8px; }
+      .owner-edit { border:1px solid var(--border); border-radius:7px; padding:4px 8px; background:transparent; color:var(--text-secondary); cursor:pointer; }
+      .owner-edit:hover { color:var(--text-primary); border-color:var(--accent); }
+      .risk-badge { display:inline-flex; align-items:center; gap:6px; border:1px solid; border-radius:999px; padding:5px 10px; font-size:.72rem; font-weight:800; }
+      .risk-low { color:#46d39a; background:rgba(70,211,154,.1); border-color:rgba(70,211,154,.35); }
+      .risk-medium { color:#f5c451; background:rgba(245,196,81,.1); border-color:rgba(245,196,81,.35); }
+      .risk-high { color:#ff9f43; background:rgba(255,159,67,.1); border-color:rgba(255,159,67,.35); }
+      .risk-critical { color:#ff6b78; background:rgba(255,107,120,.1); border-color:rgba(255,107,120,.35); }
+      .details-button { border:1px solid var(--border); border-radius:8px; padding:6px 10px; background:transparent; color:var(--text-secondary); font:inherit; font-size:.75rem; font-weight:700; cursor:pointer; }
+      .details-button:hover { color:var(--text-primary); border-color:var(--accent); }
+      .risk-details { margin-top:16px; padding:16px; border:1px solid var(--border); border-radius:10px; background:var(--bg-3); }
+      .risk-details[hidden] { display:none; }
+      .risk-details-grid { display:grid; grid-template-columns:1fr 1fr; gap:22px; }
+      .risk-details h3 { margin:0 0 8px; font-size:.82rem; color:var(--text-primary); }
+      .risk-details ul { margin:0; padding-left:20px; color:var(--text-secondary); font-size:.82rem; line-height:1.6; }
+      .empty-state { padding:26px; border:1px dashed var(--border); border-radius:12px; color:var(--text-secondary); text-align:center; }
+      .dashboard-error { margin-bottom:16px; padding:12px 16px; border:1px solid var(--crit-border); border-radius:10px; background:var(--crit-bg); color:var(--crit-color); }
+      @media (max-width:760px) { .dashboard-toolbar,.risk-details-grid { grid-template-columns:1fr; } .secondary-button { min-height:44px; } }
+    </style>
   </head>
   <body>
     <main class="container">
+
+      <!-- ── Header ── -->
       <header class="page-header">
-        <p class="eyebrow">IT-инфраструктура</p>
+        <span class="eyebrow">Infrastructure Risk Radar</span>
         <h1>Certificate Radar</h1>
         <p class="subtitle">
-          Проверяем сертификаты сервисов до того, как они станут причиной сбоя.
+          Автоматическое обнаружение, инвентаризация и мониторинг TLS/SSL-сертификатов корпоративной инфраструктуры.
         </p>
       </header>
 
+      <!-- ── Stats ── -->
+      <section class="stats" aria-label="Состояние проекта">
+        <article class="stat-card">
+          <span class="stat-label">Сервисов проверено</span>
+          <strong id="stat-total">{{ results | length }}</strong>
+        </article>
+        <article class="stat-card">
+          <span class="stat-label">Проблем найдено</span>
+          <strong id="stat-problems">{{ results | selectattr('status', 'ne', 'OK') | list | length }}</strong>
+        </article>
+        <article class="stat-card">
+          <span class="stat-label">Статус</span>
+          <strong class="status" id="stat-status">{{ "Проверка выполнена" if results or error else "Готово к проверке" }}</strong>
+        </article>
+      </section>
+
+      <!-- ── Scan Form ── -->
       <section class="panel intro-panel">
         <h2>Проверить сервис</h2>
-        <p>
-          Введите один или несколько адресов — по одному в строке. Можно указать
-          URL, адрес с портом или CIDR-сеть. По умолчанию используется порт 443.
-        </p>
-        <form action="/check" method="post" class="check-form">
+        <p>Введите один или несколько адресов — по одному в строке. Можно указать URL, адрес с портом или CIDR-сеть. По умолчанию используется порт 443.</p>
+        <form id="scan-form" class="check-form">
           <label for="target">Адреса сервисов</label>
           <div class="form-row">
-            <textarea id="target" name="target" placeholder="example.com&#10;python.org&#10;192.168.1.0/30" required>{{ targets }}</textarea>
-            <button class="button" type="submit">Проверить</button>
+            <textarea id="target" name="target"
+              placeholder="google.com&#10;expired.badssl.com&#10;192.168.1.0/30"
+              required>{{ targets }}</textarea>
+            <button id="submit-btn" class="button" type="submit">Проверить</button>
           </div>
         </form>
       </section>
 
+      <!-- ── Error banner ── -->
       {% if error %}
-      <section class="panel result-panel error-panel" role="alert">
+      <section class="panel error-panel" role="alert">
         <h2>Не удалось выполнить проверку</h2>
         <p>{{ error }}</p>
       </section>
       {% endif %}
 
-      {% if results %}
-      <section class="panel result-panel">
-        <p class="eyebrow">Результаты проверки</p>
-        <div class="table-wrap">
-          <table>
-            <thead>
-              <tr><th>Сервис</th><th>Статус</th><th>CN</th><th>Issuer</th><th>Истекает</th><th>Дней</th></tr>
-            </thead>
-            <tbody>
-              {% for result in results %}
-              <tr>
-                <td>{{ result.target }}</td>
-                <td><span class="badge badge-{{ result.status | lower }}">{{ result.status }}</span></td>
-                <td>{{ result.subject_cn or "—" }}</td>
-                <td>{{ result.issuer or "—" }}</td>
-                <td>{{ result.not_valid_after.strftime('%d.%m.%Y %H:%M UTC') if result.not_valid_after else "—" }}</td>
-                <td>{{ result.days_left if result.days_left is not none else "—" }}</td>
-              </tr>
-              {% endfor %}
-            </tbody>
-          </table>
-        </div>
-        {% for result in results if result.error %}
-        <p class="explanation error-text"><strong>{{ result.target }}:</strong> {{ result.error }}</p>
-        {% endfor %}
-      </section>
-      {% endif %}
+      <div id="dashboard-error" class="dashboard-error" hidden></div>
 
-      <section class="stats" aria-label="Состояние проекта">
-        <article class="stat-card">
-          <span class="stat-label">Сервисов проверено</span>
-          <strong>{{ results | length }}</strong>
-        </article>
-        <article class="stat-card">
-          <span class="stat-label">Проблем найдено</span>
-          <strong>{{ results | selectattr('status', 'ne', 'OK') | list | length }}</strong>
-        </article>
-        <article class="stat-card">
-          <span class="stat-label">Статус</span>
-          <strong class="status">{{ "Проверка выполнена" if results or error else "Готово к проверке" }}</strong>
-        </article>
+      <section class="dashboard-toolbar" aria-label="Фильтры реестра">
+        <input id="registry-search" class="search-input" type="search" placeholder="Поиск по Host, CN или Issuer" />
+        <select id="status-filter" class="status-filter" aria-label="Фильтр по статусу">
+          <option value="ALL">Все статусы</option>
+          <option value="OK">OK</option>
+          <option value="Information">Information</option>
+          <option value="Warning">Warning</option>
+          <option value="Critical">Critical</option>
+          <option value="Expired">Expired</option>
+          <option value="Error">Error</option>
+        </select>
+        <a class="secondary-button" href="/api/export/csv" download>Скачать CSV</a>
       </section>
+
+      <!-- ── Results ── -->
+      <section id="results-panel" class="panel result-panel" {% if not results %}hidden{% endif %}>
+        <p class="eyebrow">Результаты проверки</p>
+        <div id="certificate-list" class="certificate-list">
+          {% for r in results %}
+          <article class="certificate-card status-{{ r.status | lower }}">
+            <div class="certificate-card-header">
+              <span class="cert-host">
+                {{ r.target }}
+              </span>
+              <div class="certificate-card-header-actions">
+                {% if r.is_self_signed %}<span class="problem-badge">Self-Signed</span>{% endif %}
+                {% if r.hostname_mismatch %}<span class="problem-badge">Mismatch</span>{% endif %}
+                {% if r.untrusted_chain %}<span class="problem-badge">Untrusted</span>{% endif %}
+                {% if r.weak_signature %}<span class="problem-badge">Weak Signature</span>{% endif %}
+                {% if r.weak_key %}<span class="problem-badge">Weak Key</span>{% endif %}
+                <span class="risk-badge risk-{{ r.risk_level | lower }}">{{ r.risk_score }}/100 · {{ r.risk_level }}</span>
+                <span class="badge badge-{{ r.status | lower }}">{{ r.status }}</span>
+              </div>
+            </div>
+            {% if r.status != 'Error' %}
+            <div class="certificate-details">
+              <div class="cert-field">
+                <span class="cert-field-label">Common Name</span>
+                <span class="cert-field-value">{{ r.subject_cn or "—" }}</span>
+              </div>
+              <div class="cert-field">
+                <span class="cert-field-label">Issuer</span>
+                <span class="cert-field-value muted">{{ r.issuer or "—" }}</span>
+              </div>
+              <div class="cert-field">
+                <span class="cert-field-label">Истекает</span>
+                <span class="cert-field-value">{{ r.not_valid_after.strftime('%d.%m.%Y %H:%M UTC') if r.not_valid_after else "—" }}</span>
+              </div>
+              <div class="cert-field">
+                <span class="cert-field-label">Дней осталось</span>
+                <span class="cert-field-value
+                  {% if r.days_left is not none %}
+                    {% if r.days_left < 0 %}days-crit
+                    {% elif r.days_left <= 14 %}days-crit
+                    {% elif r.days_left <= 30 %}days-warn
+                    {% else %}days-ok{% endif %}
+                  {% endif %}">
+                  {{ r.days_left if r.days_left is not none else "—" }}
+                </span>
+              </div>
+              <div class="cert-field">
+                <span class="cert-field-label">Ответственный</span>
+                <span class="owner-field">
+                  <span class="cert-field-value">{{ r.owner or "Не назначен" }}</span>
+                </span>
+              </div>
+            </div>
+            {% else %}
+            <div class="cert-error-msg">{{ r.error or "Соединение не установлено" }}</div>
+            {% endif %}
+          </article>
+          {% endfor %}
+        </div>
+      </section>
+
     </main>
+
+    <script>
+      const scanForm = document.getElementById("scan-form");
+      const submitBtn = document.getElementById("submit-btn");
+      const resultsPanel = document.getElementById("results-panel");
+      const certList = document.getElementById("certificate-list");
+      const statTotal = document.getElementById("stat-total");
+      const statProblems = document.getElementById("stat-problems");
+      const statStatus = document.getElementById("stat-status");
+      const searchInput = document.getElementById("registry-search");
+      const statusFilter = document.getElementById("status-filter");
+      const errorBox = document.getElementById("dashboard-error");
+
+      let certificates = [];
+
+      const esc = (value) => String(value ?? "—")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+
+      const fmtDate = (value) => value
+        ? new Date(value).toLocaleString("ru-RU", { timeZone: "UTC" }) + " UTC"
+        : "—";
+
+      const daysClass = (days) => {
+        if (days == null) return "";
+        if (days <= 14) return "days-crit";
+        if (days <= 30) return "days-warn";
+        return "days-ok";
+      };
+
+      const showError = (message) => {
+        errorBox.textContent = message;
+        errorBox.hidden = false;
+      };
+
+      const clearError = () => {
+        errorBox.hidden = true;
+        errorBox.textContent = "";
+      };
+
+      const issueBadges = (certificate) => [
+        certificate.is_self_signed ? '<span class="problem-badge">Self-Signed</span>' : "",
+        certificate.hostname_mismatch ? '<span class="problem-badge">Mismatch</span>' : "",
+        certificate.untrusted_chain ? '<span class="problem-badge">Untrusted</span>' : "",
+        certificate.weak_signature ? '<span class="problem-badge">Weak Signature</span>' : "",
+        certificate.weak_key ? '<span class="problem-badge">Weak Key</span>' : "",
+      ].join("");
+
+      const renderList = (items, emptyText) => {
+        const values = Array.isArray(items) ? items : [];
+        return values.length
+          ? `<ul>${values.map(item => `<li>${esc(item)}</li>`).join("")}</ul>`
+          : `<ul><li>${esc(emptyText)}</li></ul>`;
+      };
+
+      const renderCard = (certificate) => {
+        const statusSlug = esc(certificate.status).toLowerCase();
+        const owner = certificate.owner || "Не назначен";
+        const details = certificate.status === "Error"
+          ? `<div class="cert-error-msg">${esc(certificate.error || "Соединение не установлено")}</div>`
+          : `<div class="certificate-details">
+              <div class="cert-field"><span class="cert-field-label">Common Name</span><span class="cert-field-value">${esc(certificate.cn)}</span></div>
+              <div class="cert-field"><span class="cert-field-label">Issuer</span><span class="cert-field-value muted">${esc(certificate.issuer)}</span></div>
+              <div class="cert-field"><span class="cert-field-label">Истекает</span><span class="cert-field-value">${esc(fmtDate(certificate.not_after))}</span></div>
+              <div class="cert-field"><span class="cert-field-label">Дней осталось</span><span class="cert-field-value ${daysClass(certificate.days_left)}">${esc(certificate.days_left)}</span></div>
+              <div class="cert-field"><span class="cert-field-label">Ответственный</span><span class="owner-field"><span class="cert-field-value">${esc(owner)}</span><button class="owner-edit" type="button" data-owner-id="${certificate.id}" data-owner="${esc(certificate.owner || "")}" aria-label="Изменить ответственного">✎</button></span></div>
+              <div class="cert-field"><span class="cert-field-label">Последняя проверка</span><span class="cert-field-value muted">${esc(fmtDate(certificate.last_scanned_at))}</span></div>
+            </div>`;
+
+        const riskLevel = esc(certificate.risk_level || "Low").toLowerCase();
+        const riskDetailsId = `risk-details-${certificate.id}`;
+        return `<article class="certificate-card status-${statusSlug}">
+          <div class="certificate-card-header">
+            <span class="cert-host">${esc(certificate.host)}:${esc(certificate.port)}</span>
+            <div class="certificate-card-header-actions">
+              ${issueBadges(certificate)}
+              <span class="risk-badge risk-${riskLevel}">${esc(certificate.risk_score ?? 0)}/100 · ${esc(certificate.risk_level || "Low")}</span>
+              <span class="badge badge-${statusSlug}">${esc(certificate.status)}</span>
+              <button class="details-button" type="button" data-details-id="${riskDetailsId}" aria-expanded="false">Детали</button>
+            </div>
+          </div>
+          ${details}
+          <div id="${riskDetailsId}" class="risk-details" hidden>
+            <div class="risk-details-grid">
+              <div><h3>Причины риска</h3>${renderList(certificate.risk_reasons, "Нарушения не обнаружены")}</div>
+              <div><h3>Рекомендации</h3>${renderList(certificate.recommendations, "Дополнительные действия не требуются")}</div>
+            </div>
+          </div>
+        </article>`;
+      };
+
+      const updateStats = () => {
+        statTotal.textContent = certificates.length;
+        statProblems.textContent = certificates.filter(item =>
+          item.status !== "OK" || item.risk_score > 20
+        ).length;
+      };
+
+      const applyFilters = () => {
+        const query = searchInput.value.trim().toLowerCase();
+        const status = statusFilter.value;
+        const filtered = certificates.filter((certificate) => {
+          const matchesStatus = status === "ALL" || certificate.status === status;
+          const haystack = `${certificate.host} ${certificate.cn || ""} ${certificate.issuer || ""}`.toLowerCase();
+          return matchesStatus && (!query || haystack.includes(query));
+        });
+
+        resultsPanel.hidden = false;
+        certList.innerHTML = filtered.length
+          ? filtered.map(renderCard).join("")
+          : '<div class="empty-state">Сертификаты не найдены</div>';
+      };
+
+      const loadCertificates = async () => {
+        clearError();
+        const response = await fetch("/api/certificates");
+        const payload = await response.json();
+        if (!response.ok) throw new Error(payload.detail || "Не удалось загрузить реестр");
+        certificates = payload;
+        updateStats();
+        applyFilters();
+        statStatus.textContent = "Реестр загружен";
+      };
+
+      const mergeCertificates = (items) => {
+        const byId = new Map(certificates.map(item => [item.id, item]));
+        items.forEach(item => byId.set(item.id, item));
+        certificates = Array.from(byId.values()).sort((a, b) =>
+          new Date(b.last_scanned_at) - new Date(a.last_scanned_at)
+        );
+      };
+
+      scanForm.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        clearError();
+        const targets = document.getElementById("target").value
+          .split("\n").map(value => value.trim()).filter(Boolean);
+        if (!targets.length) return;
+
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<span class="spinner"></span>Проверяем…';
+        statStatus.textContent = "Сканирование…";
+
+        try {
+          const response = await fetch("/api/scan", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ targets }),
+          });
+          const payload = await response.json();
+          if (!response.ok) throw new Error(payload.detail || "Ошибка сканирования");
+          mergeCertificates(payload);
+          updateStats();
+          applyFilters();
+          statStatus.textContent = "Проверка выполнена";
+        } catch (error) {
+          showError(error.message);
+          statStatus.textContent = "Ошибка";
+        } finally {
+          submitBtn.disabled = false;
+          submitBtn.textContent = "Проверить";
+        }
+      });
+
+      certList.addEventListener("click", async (event) => {
+        const detailsButton = event.target.closest("[data-details-id]");
+        if (detailsButton) {
+          const details = document.getElementById(detailsButton.dataset.detailsId);
+          const opening = details.hidden;
+          details.hidden = !opening;
+          detailsButton.setAttribute("aria-expanded", String(opening));
+          detailsButton.textContent = opening ? "Скрыть" : "Детали";
+          return;
+        }
+
+        const button = event.target.closest("[data-owner-id]");
+        if (!button) return;
+        const currentOwner = button.dataset.owner || "";
+        const owner = prompt("Введите имя ответственного. Оставьте пустым, чтобы удалить.", currentOwner);
+        if (owner === null) return;
+
+        try {
+          clearError();
+          const response = await fetch(`/api/certificates/${button.dataset.ownerId}/owner`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ owner }),
+          });
+          const payload = await response.json();
+          if (!response.ok) throw new Error(payload.detail || "Не удалось изменить ответственного");
+          mergeCertificates([payload]);
+          applyFilters();
+        } catch (error) {
+          showError(error.message);
+        }
+      });
+
+      searchInput.addEventListener("input", applyFilters);
+      statusFilter.addEventListener("change", applyFilters);
+
+      document.addEventListener("DOMContentLoaded", () => {
+        loadCertificates().catch(error => {
+          showError(error.message);
+          statStatus.textContent = "Ошибка загрузки";
+        });
+      });
+    </script>
   </body>
 </html>
